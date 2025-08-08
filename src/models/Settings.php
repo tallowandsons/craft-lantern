@@ -10,4 +10,18 @@ use craft\base\Model;
  */
 class Settings extends Model
 {
+    /**
+     * @var bool Whether to enable debug logging
+     */
+    public bool $enableDebugLogging = false;
+
+    /**
+     * @inheritdoc
+     */
+    public function defineRules(): array
+    {
+        return [
+            ['enableDebugLogging', 'boolean'],
+        ];
+    }
 }

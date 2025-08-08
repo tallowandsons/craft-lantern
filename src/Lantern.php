@@ -6,6 +6,7 @@ use Craft;
 use craft\base\Model;
 use craft\base\Plugin;
 use tallowandsons\lantern\models\Settings;
+use tallowandsons\lantern\services\LogService;
 use tallowandsons\lantern\twig\LanternLoader;
 
 /**
@@ -13,6 +14,7 @@ use tallowandsons\lantern\twig\LanternLoader;
  *
  * @method static Lantern getInstance()
  * @method Settings getSettings()
+ * @property LogService $log
  * @author Tallow & Sons
  * @copyright Tallow & Sons
  * @license https://craftcms.github.io/license/ Craft License
@@ -26,7 +28,7 @@ class Lantern extends Plugin
     {
         return [
             'components' => [
-                // Define component configs here...
+                'log' => LogService::class,
             ],
         ];
     }
@@ -62,7 +64,7 @@ class Lantern extends Plugin
 
     protected function settingsHtml(): ?string
     {
-        return Craft::$app->view->renderTemplate('lantern/_settings.twig', [
+        return Craft::$app->view->renderTemplate('lantern/_settings', [
             'plugin' => $this,
             'settings' => $this->getSettings(),
         ]);

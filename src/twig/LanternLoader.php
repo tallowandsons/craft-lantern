@@ -5,7 +5,7 @@ namespace tallowandsons\lantern\twig;
 use Twig\Source;
 use Craft;
 use craft\web\twig\TemplateLoader;
-use yii\log\Logger;
+use tallowandsons\lantern\Lantern;
 
 final class LanternLoader extends TemplateLoader
 {
@@ -35,13 +35,10 @@ final class LanternLoader extends TemplateLoader
 
         $this->loggedThisRequest[$name] = true;
 
-        // Ultra-minimal persistence: one line per template per request
-        // Format: ISO timestamp, URL, template name
+        // Get the current URL for logging context
         $url = Craft::$app->getRequest()->getAbsoluteUrl();
-        Craft::getLogger()->log(
-            sprintf('[lantern] %s %s %s', gmdate('c'), $url, $name),
-            Logger::LEVEL_INFO,
-            'lantern'
-        );
+
+        // Use the dedicated log service
+        Lantern::getInstance()->log->logTemplateLoad($name, $url);
     }
 }
