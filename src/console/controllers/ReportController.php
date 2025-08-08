@@ -14,10 +14,18 @@ class ReportController extends Controller
 {
     public $defaultAction = 'index';
 
+    /**
+     * @var int|null Number of days to consider templates as stale
+     */
+    public $olderThan;
+
     public function options($actionID): array
     {
         $options = parent::options($actionID);
         switch ($actionID) {
+            case 'unused':
+                $options[] = 'olderThan';
+                break;
             case 'index':
             case 'cache-stats':
             case 'clear-cache':
@@ -36,14 +44,15 @@ class ReportController extends Controller
         $this->stdout("==============================\n\n");
 
         $this->stdout("Available commands:\n");
-        $this->stdout("  lantern/report/cache-stats  - View current template cache statistics\n");
-        $this->stdout("  lantern/report/clear-cache  - Clear template usage cache\n");
-        $this->stdout("  lantern/report/flush-cache  - Flush cache data to database\n");
-        $this->stdout("  lantern/report/db-stats     - View database statistics\n");
-        $this->stdout("  lantern/report/unused       - Find unused templates\n");
-        $this->stdout("  lantern/report/scan         - Scan templates directory\n");
-        $this->stdout("  lantern/report/inventory    - View template inventory\n");
-        $this->stdout("  lantern/report/orphans      - Find orphaned templates\n");
+        $this->stdout("  lantern/report/cache-stats         - View current template cache statistics\n");
+        $this->stdout("  lantern/report/clear-cache         - Clear template usage cache\n");
+        $this->stdout("  lantern/report/flush-cache         - Flush cache data to database\n");
+        $this->stdout("  lantern/report/db-stats            - View database statistics\n");
+        $this->stdout("  lantern/report/unused              - Find unused templates (never used)\n");
+        $this->stdout("  lantern/report/unused --older-than=X - Find templates unused for X days\n");
+        $this->stdout("  lantern/report/scan                - Scan templates directory\n");
+        $this->stdout("  lantern/report/inventory           - View template inventory\n");
+        $this->stdout("  lantern/report/orphans             - Find orphaned templates\n");
 
         return ExitCode::OK;
     }
@@ -194,45 +203,144 @@ class ReportController extends Controller
     }
 
     /**
-     * lantern/report/unused command - Shows unused templates
+     * lantern/report/unused command - Shows unused templates or templates not used within X days
+     *
+     * @param int|null $olderThan Number of days to consider templates as stale
      */
-    public function actionUnused(int $days = 30): int
+    public function actionUnused(): int
     {
-        $lantern = Lantern::getInstance();
-        $databaseService = $lantern->databaseService;
+        $siteId = Craft::$app->getSites()->getCurrentSite()->id;
 
-        $this->stdout("Unused Templates (not used in last {$days} days)\n", \yii\helpers\Console::FG_CYAN);
-        $this->stdout(str_repeat("=", 50) . "\n\n");
+        $this->stdout("Unused Template Analysis\n", \yii\helpers\Console::FG_YELLOW);
+        $this->stdout("========================\n");
 
-        $unusedTemplates = $databaseService->getUnusedTemplates($days);
+        if ($this->olderThan !== null) {
+            $days = (int) $this->olderThan;
+            if ($days <= 0) {
+                $this->stderr("Error: --older-than must be a positive number of days\n", \yii\helpers\Console::FG_RED);
+                return ExitCode::DATAERR;
+            }
 
-        if (empty($unusedTemplates)) {
-            $this->stdout("No unused templates found!\n", \yii\helpers\Console::FG_GREEN);
-            $this->stdout("All templates have been used within the last {$days} days.\n");
-            return ExitCode::OK;
+            $cutoffDate = date('Y-m-d H:i:s', strtotime("-{$days} days"));
+            $this->stdout("Showing templates not used in the last {$days} days (since " . date('Y-m-d', strtotime($cutoffDate)) . "):\n\n");
+
+            $staleTemplates = $this->getStaleTemplates($siteId, $cutoffDate);
+            $this->displayStaleTemplates($staleTemplates, $days);
+        } else {
+            $this->stdout("Showing templates that have never been used:\n\n");
+
+            $unusedTemplates = Lantern::getInstance()->inventoryService->getUnusedInventoryTemplates($siteId);
+            $this->displayUnusedTemplates($unusedTemplates);
         }
 
-        $this->stdout("Found " . count($unusedTemplates) . " unused templates:\n", \yii\helpers\Console::FG_YELLOW);
-        $this->stdout(str_repeat("-", 100) . "\n");
-        $this->stdout(sprintf("%-60s %10s %s\n", "Template", "Total Hits", "Last Used"));
-        $this->stdout(str_repeat("-", 100) . "\n");
+        return ExitCode::OK;
+    }
 
-        foreach ($unusedTemplates as $template) {
-            $lastUsed = $template['lastUsed'] ? date('Y-m-d', strtotime($template['lastUsed'])) : 'Never';
-            $daysSince = $template['daysSinceLastUse'] ? "{$template['daysSinceLastUse']} days ago" : 'Never';
+    /**
+     * Get templates that haven't been used since the cutoff date
+     */
+    private function getStaleTemplates(int $siteId, string $cutoffDate): array
+    {
+        // Get templates that either:
+        // 1. Have never been used (not in usage_total)
+        // 2. Haven't been used since the cutoff date
+        $query = "
+            SELECT
+                i.template,
+                i.filePath,
+                i.fileModified,
+                u.totalHits,
+                u.pageHits,
+                u.lastUsed
+            FROM {{%lantern_templateinventory}} i
+            LEFT JOIN {{%lantern_usage_total}} u ON i.template = u.template AND i.siteId = u.siteId
+            WHERE i.siteId = :siteId
+            AND i.isActive = 1
+            AND (u.template IS NULL OR u.lastUsed < :cutoffDate)
+            ORDER BY u.lastUsed DESC, i.template ASC
+        ";
+
+        return Craft::$app->getDb()->createCommand($query, [
+            ':siteId' => $siteId,
+            ':cutoffDate' => $cutoffDate,
+        ])->queryAll();
+    }
+
+    /**
+     * Display stale templates
+     */
+    private function displayStaleTemplates(array $staleTemplates, int $days): void
+    {
+        if (empty($staleTemplates)) {
+            $this->stdout("  No stale templates found! All templates have been used within the last {$days} days.\n", \yii\helpers\Console::FG_GREEN);
+            return;
+        }
+
+        $this->stdout(str_repeat("-", 110) . "\n");
+        $this->stdout(sprintf("%-50s %-30s %10s %s\n", "Template", "File Path", "Total Hits", "Last Used"));
+        $this->stdout(str_repeat("-", 110) . "\n");
+
+        $neverUsed = 0;
+        $staleUsed = 0;
+
+        foreach ($staleTemplates as $template) {
+            $hits = $template['totalHits'] ?? 0;
+            $lastUsed = $template['lastUsed'] ? date('Y-m-d H:i', strtotime($template['lastUsed'])) : 'Never';
+
+            if ($template['lastUsed'] === null) {
+                $neverUsed++;
+            } else {
+                $staleUsed++;
+            }
 
             $this->stdout(sprintf(
-                "%-60s %10d %s (%s)\n",
-                $template['template'],
-                $template['totalHits'],
-                $lastUsed,
-                $daysSince
+                "%-50s %-30s %10s %s\n",
+                substr($template['template'], 0, 49),
+                substr($template['filePath'], 0, 29),
+                $hits > 0 ? number_format($hits) : '0',
+                $lastUsed
             ));
         }
 
-        $this->stdout("\nThese templates may be candidates for cleanup.\n", \yii\helpers\Console::FG_GREY);
+        $this->stdout("\nSummary:\n", \yii\helpers\Console::FG_YELLOW);
+        $this->stdout("  Total stale templates: " . count($staleTemplates) . "\n");
+        $this->stdout("  Never used: {$neverUsed}\n");
+        $this->stdout("  Not used in last {$days} days: {$staleUsed}\n");
 
-        return ExitCode::OK;
+        $this->stdout("\nRecommendations:\n", \yii\helpers\Console::FG_GREY);
+        $this->stdout("- Templates marked 'Never' are safe cleanup candidates\n", \yii\helpers\Console::FG_GREY);
+        $this->stdout("- Templates with old 'Last Used' dates may be seasonal or legacy\n", \yii\helpers\Console::FG_GREY);
+        $this->stdout("- Consider the business context before removing templates\n", \yii\helpers\Console::FG_GREY);
+    }
+
+    /**
+     * Display unused templates (never used)
+     */
+    private function displayUnusedTemplates(array $unusedTemplates): void
+    {
+        if (empty($unusedTemplates)) {
+            $this->stdout("  No unused templates found! All templates in inventory have been used.\n", \yii\helpers\Console::FG_GREEN);
+            return;
+        }
+
+        $this->stdout(str_repeat("-", 90) . "\n");
+        $this->stdout(sprintf("%-60s %s\n", "Template", "File Path"));
+        $this->stdout(str_repeat("-", 90) . "\n");
+
+        foreach ($unusedTemplates as $template) {
+            $this->stdout(sprintf(
+                "%-60s %s\n",
+                substr($template['template'], 0, 59),
+                substr($template['filePath'], 0, 29)
+            ));
+        }
+
+        $this->stdout("\nSummary:\n", \yii\helpers\Console::FG_YELLOW);
+        $this->stdout("  Total unused templates: " . count($unusedTemplates) . "\n");
+
+        $this->stdout("\nRecommendations:\n", \yii\helpers\Console::FG_GREY);
+        $this->stdout("- These templates have never been used and are safe cleanup candidates\n", \yii\helpers\Console::FG_GREY);
+        $this->stdout("- Consider the business context before removing templates\n", \yii\helpers\Console::FG_GREY);
     }
 
     /**
