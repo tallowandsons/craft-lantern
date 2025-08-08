@@ -9,12 +9,10 @@ use tallowandsons\lantern\Lantern;
 
 final class LanternLoader extends TemplateLoader
 {
-    private array $loggedThisRequest = [];
-
     // This is called for *every* template Twig resolves (includes, embeds, extends, pages)
     public function getSourceContext(string $name): Source
     {
-        $this->logOnce($name);
+        $this->logTemplate($name);
 
         return parent::getSourceContext($name);
     }
@@ -22,23 +20,25 @@ final class LanternLoader extends TemplateLoader
     public function getCacheKey(string $name): string
     {
         // Some Twig paths hit this first; log here too (still de-duped)
-        $this->logOnce($name);
+        $this->logTemplate($name);
 
         return parent::getCacheKey($name);
     }
 
-    private function logOnce(string $name): void
+    private function logTemplate(string $name): void
     {
-        if (isset($this->loggedThisRequest[$name])) {
-            return;
+        $lantern = Lantern::getInstance();
+
+        // Accumulate template usage data in the cache service
+        $lantern->cacheService->incrementTemplate($name);
+
+        // Also log for debugging/monitoring (only if not already logged)
+
+        if ($lantern->debuggingEnabled()) {
+            if (!$lantern->cacheService->isTemplateLogged($name)) {
+                $url = Craft::$app->getRequest()->getAbsoluteUrl();
+                $lantern->log->logTemplateLoad($name, $url);
+            }
         }
-
-        $this->loggedThisRequest[$name] = true;
-
-        // Get the current URL for logging context
-        $url = Craft::$app->getRequest()->getAbsoluteUrl();
-
-        // Use the dedicated log service
-        Lantern::getInstance()->log->logTemplateLoad($name, $url);
     }
 }

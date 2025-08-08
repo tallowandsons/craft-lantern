@@ -30,7 +30,8 @@ class Lantern extends Plugin
     {
         return [
             'components' => [
-                'log' => LogService::class, 'cacheService' => CacheService::class,
+                'log' => LogService::class,
+                'cacheService' => CacheService::class,
             ],
         ];
     }
@@ -44,8 +45,11 @@ class Lantern extends Plugin
         // Any code that creates an element query or loads Twig should be deferred until
         // after Craft is fully initialized, to avoid conflicts with other plugins/modules
         Craft::$app->onInit(function () {
-            // Replace Twig's loader with our proxy
-            $this->replaceLoader();
+            // replace Twig's loader with LanternLoader
+            // if site request (not admin request)
+            if (!Craft::$app->getRequest()->getIsCpRequest()) {
+                $this->replaceLoader();
+            }
         });
     }
 
@@ -76,5 +80,10 @@ class Lantern extends Plugin
     {
         // Register event handlers here ...
         // (see https://craftcms.com/docs/5.x/extend/events.html to get started)
+    }
+
+    public function debuggingEnabled(): bool
+    {
+        return $this->getSettings()->enableDebugLogging;
     }
 }

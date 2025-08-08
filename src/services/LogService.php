@@ -115,6 +115,14 @@ class LogService extends Component
     }
 
     /**
+     * Log template cache increment
+     */
+    public function logTemplateIncrement(string $templateName): void
+    {
+        $this->debug("Template hit incremented: '{$templateName}'", 'cache');
+    }
+
+    /**
      * Set up the MonologTarget for Lantern logs
      */
     private function _setupMonologTarget(): void
