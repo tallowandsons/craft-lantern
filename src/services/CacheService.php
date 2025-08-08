@@ -10,8 +10,8 @@ use yii\base\Component;
  * Cache Service
  *
  * Handles accumulation of template usage hits across requests.
- * Uses Craft's cache system to persist cumulative hit counts while maintaining
- * per-request de-duplication in memory.
+ * Uses Craft's cache system to persist cumulative hit counts.
+ * Counts every actual template render (no de-duplication).
  */
 class CacheService extends Component
 {
@@ -30,13 +30,6 @@ class CacheService extends Component
      * Format: ['template/path.twig' => total_hit_count, ...]
      */
     private array $templateHits = [];
-
-    /**
-     * @var array Track which templates have been logged this request (in-memory only)
-     * Format: ['template/path.twig' => true, ...]
-     * This resets with each new request to allow proper per-request de-duplication
-     */
-    private array $loggedThisRequest = [];
 
     /**
      * @var bool Whether we've loaded cache data this request
@@ -75,21 +68,14 @@ class CacheService extends Component
     }
 
     /**
-     * Increment the hit count for a template (with de-duplication per request)
+     * Increment the hit count for a template (counts every render)
      */
     public function incrementTemplate(string $templateName): void
     {
         // Load cache data first
         $this->loadCacheData();
 
-        // De-duplicate within the same request
-        if (isset($this->loggedThisRequest[$templateName])) {
-            return;
-        }
-
-        $this->loggedThisRequest[$templateName] = true;
-
-        // Increment the hit count in memory
+        // Increment the hit count in memory (no de-duplication)
         if (!isset($this->templateHits[$templateName])) {
             $this->templateHits[$templateName] = 0;
         }
@@ -129,7 +115,6 @@ class CacheService extends Component
     public function clearTemplateHits(): void
     {
         $this->templateHits = [];
-        $this->loggedThisRequest = [];
 
         // Clear the persistent cache
         Craft::$app->getCache()->delete(self::CACHE_KEY_HITS);
@@ -153,15 +138,5 @@ class CacheService extends Component
     {
         $this->loadCacheData();
         return array_sum($this->templateHits);
-    }
-
-    /**
-     * Check if a template has been logged this request (for de-duplication)
-     */
-    public function isTemplateLogged(string $templateName): bool
-    {
-        // Note: We don't need to load cache data for this check
-        // This is purely in-memory per-request tracking
-        return isset($this->loggedThisRequest[$templateName]);
     }
 }
