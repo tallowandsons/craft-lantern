@@ -80,6 +80,45 @@ class Install extends Migration
             );
         }
 
+        // Create lantern_templateinventory table
+        if (!$this->db->tableExists('{{%lantern_templateinventory}}')) {
+            $this->createTable('{{%lantern_templateinventory}}', [
+                'id' => $this->primaryKey(),
+                'template' => $this->string(255)->notNull(),
+                'siteId' => $this->integer()->notNull(),
+                'filePath' => $this->string(500)->notNull(),
+                'fileModified' => $this->dateTime()->null(),
+                'isActive' => $this->boolean()->notNull()->defaultValue(true),
+                'lastScanned' => $this->dateTime()->notNull(),
+                'dateCreated' => $this->dateTime()->notNull(),
+                'dateUpdated' => $this->dateTime()->notNull(),
+                'uid' => $this->uid(),
+            ]);
+
+            // Add indexes for performance
+            $this->createIndex(
+                'idx_lantern_inventory_template_site',
+                '{{%lantern_templateinventory}}',
+                ['template', 'siteId'],
+                true // unique
+            );
+            $this->createIndex(
+                'idx_lantern_inventory_site',
+                '{{%lantern_templateinventory}}',
+                'siteId'
+            );
+            $this->createIndex(
+                'idx_lantern_inventory_active',
+                '{{%lantern_templateinventory}}',
+                'isActive'
+            );
+            $this->createIndex(
+                'idx_lantern_inventory_last_scanned',
+                '{{%lantern_templateinventory}}',
+                'lastScanned'
+            );
+        }
+
         return true;
     }
 
@@ -89,6 +128,7 @@ class Install extends Migration
     public function safeDown(): bool
     {
         // Drop tables in reverse order
+        $this->dropTableIfExists('{{%lantern_templateinventory}}');
         $this->dropTableIfExists('{{%lantern_usage_daily}}');
         $this->dropTableIfExists('{{%lantern_usage_total}}');
 
