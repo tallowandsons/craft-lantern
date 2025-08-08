@@ -38,6 +38,9 @@ class ReportController extends Controller
         $this->stdout("Available commands:\n");
         $this->stdout("  lantern/report/cache-stats  - View current template cache statistics\n");
         $this->stdout("  lantern/report/clear-cache  - Clear template usage cache\n");
+        $this->stdout("  lantern/report/flush-cache  - Flush cache data to database\n");
+        $this->stdout("  lantern/report/db-stats     - View database statistics\n");
+        $this->stdout("  lantern/report/unused       - Find unused templates\n");
 
         return ExitCode::OK;
     }
@@ -53,7 +56,7 @@ class ReportController extends Controller
         $this->stdout("Current Template Cache Statistics\n", \yii\helpers\Console::FG_CYAN);
         $this->stdout("=================================\n\n");
 
-        $templateHits = $cacheService->getTemplateHits();
+        $templateData = $cacheService->getTemplateData();
         $templateCount = $cacheService->getTemplateCount();
         $totalHits = $cacheService->getTotalHits();
 
@@ -70,15 +73,21 @@ class ReportController extends Controller
 
         // Display detailed template list
         $this->stdout("Template Details:\n", \yii\helpers\Console::FG_YELLOW);
-        $this->stdout(str_repeat("-", 80) . "\n");
-        $this->stdout(sprintf("%-60s %s\n", "Template", "Hits"));
-        $this->stdout(str_repeat("-", 80) . "\n");
+        $this->stdout(str_repeat("-", 100) . "\n");
+        $this->stdout(sprintf("%-60s %8s %s\n", "Template", "Hits", "Last Hit"));
+        $this->stdout(str_repeat("-", 100) . "\n");
 
         // Sort templates by hit count (descending)
-        arsort($templateHits);
+        uasort($templateData, function ($a, $b) {
+            return $b['hits'] <=> $a['hits'];
+        });
 
-        foreach ($templateHits as $template => $hits) {
-            $this->stdout(sprintf("%-60s %d\n", $template, $hits));
+        foreach ($templateData as $template => $data) {
+            $lastHitFormatted = $data['lastHit']
+                ? date('Y-m-d H:i:s', $data['lastHit'])
+                : 'Never';
+
+            $this->stdout(sprintf("%-60s %8d %s\n", $template, $data['hits'], $lastHitFormatted));
         }
 
         $this->stdout("\nNote: This shows accumulated template usage data from the cache.\n", \yii\helpers\Console::FG_GREY);
@@ -106,6 +115,119 @@ class ReportController extends Controller
 
         $this->stdout("Cache cleared successfully!\n", \yii\helpers\Console::FG_GREEN);
         $this->stdout("Removed {$templateCount} templates with {$totalHits} total hits.\n");
+
+        return ExitCode::OK;
+    }
+
+    /**
+     * lantern/report/flush-cache command - Flushes cache data to database
+     */
+    public function actionFlushCache(): int
+    {
+        $lantern = Lantern::getInstance();
+        $databaseService = $lantern->databaseService;
+
+        $this->stdout("Flushing template cache to database...\n", \yii\helpers\Console::FG_CYAN);
+
+        $result = $databaseService->flushCacheToDatabase();
+
+        if ($result['success']) {
+            $this->stdout("Cache flushed successfully!\n", \yii\helpers\Console::FG_GREEN);
+            $this->stdout("Processed {$result['templatesProcessed']} templates with {$result['totalHitsProcessed']} total hits.\n");
+        } else {
+            $this->stdout("Failed to flush cache!\n", \yii\helpers\Console::FG_RED);
+            $this->stdout("Error: {$result['message']}\n");
+            return ExitCode::UNSPECIFIED_ERROR;
+        }
+
+        return ExitCode::OK;
+    }
+
+    /**
+     * lantern/report/db-stats command - Shows database statistics
+     */
+    public function actionDbStats(): int
+    {
+        $lantern = Lantern::getInstance();
+        $databaseService = $lantern->databaseService;
+
+        $this->stdout("Template Usage Database Statistics\n", \yii\helpers\Console::FG_CYAN);
+        $this->stdout("===================================\n\n");
+
+        $totalStats = $databaseService->getTotalUsageStats();
+
+        if (empty($totalStats)) {
+            $this->stdout("No template usage data found in database.\n", \yii\helpers\Console::FG_GREY);
+            $this->stdout("Run 'lantern/report/flush-cache' to move cache data to database.\n", \yii\helpers\Console::FG_GREY);
+            return ExitCode::OK;
+        }
+
+        $this->stdout("Total Usage (All Time):\n", \yii\helpers\Console::FG_YELLOW);
+        $this->stdout(str_repeat("-", 120) . "\n");
+        $this->stdout(sprintf("%-60s %10s %10s %s\n", "Template", "Total Hits", "Page Hits", "Last Used"));
+        $this->stdout(str_repeat("-", 120) . "\n");
+
+        foreach ($totalStats as $stat) {
+            $lastUsed = $stat['lastUsed'] ? date('Y-m-d H:i', strtotime($stat['lastUsed'])) : 'Never';
+            $this->stdout(sprintf(
+                "%-60s %10d %10d %s\n",
+                $stat['template'],
+                $stat['totalHits'],
+                $stat['pageHits'],
+                $lastUsed
+            ));
+        }
+
+        $totalTemplates = count($totalStats);
+        $totalHits = array_sum(array_column($totalStats, 'totalHits'));
+        $totalPageHits = array_sum(array_column($totalStats, 'pageHits'));
+
+        $this->stdout("\nSummary:\n", \yii\helpers\Console::FG_YELLOW);
+        $this->stdout("  Total templates: {$totalTemplates}\n");
+        $this->stdout("  Total hits: {$totalHits}\n");
+        $this->stdout("  Total page hits: {$totalPageHits}\n");
+
+        return ExitCode::OK;
+    }
+
+    /**
+     * lantern/report/unused command - Shows unused templates
+     */
+    public function actionUnused(int $days = 30): int
+    {
+        $lantern = Lantern::getInstance();
+        $databaseService = $lantern->databaseService;
+
+        $this->stdout("Unused Templates (not used in last {$days} days)\n", \yii\helpers\Console::FG_CYAN);
+        $this->stdout(str_repeat("=", 50) . "\n\n");
+
+        $unusedTemplates = $databaseService->getUnusedTemplates($days);
+
+        if (empty($unusedTemplates)) {
+            $this->stdout("No unused templates found!\n", \yii\helpers\Console::FG_GREEN);
+            $this->stdout("All templates have been used within the last {$days} days.\n");
+            return ExitCode::OK;
+        }
+
+        $this->stdout("Found " . count($unusedTemplates) . " unused templates:\n", \yii\helpers\Console::FG_YELLOW);
+        $this->stdout(str_repeat("-", 100) . "\n");
+        $this->stdout(sprintf("%-60s %10s %s\n", "Template", "Total Hits", "Last Used"));
+        $this->stdout(str_repeat("-", 100) . "\n");
+
+        foreach ($unusedTemplates as $template) {
+            $lastUsed = $template['lastUsed'] ? date('Y-m-d', strtotime($template['lastUsed'])) : 'Never';
+            $daysSince = $template['daysSinceLastUse'] ? "{$template['daysSinceLastUse']} days ago" : 'Never';
+
+            $this->stdout(sprintf(
+                "%-60s %10d %s (%s)\n",
+                $template['template'],
+                $template['totalHits'],
+                $lastUsed,
+                $daysSince
+            ));
+        }
+
+        $this->stdout("\nThese templates may be candidates for cleanup.\n", \yii\helpers\Console::FG_GREY);
 
         return ExitCode::OK;
     }

@@ -7,6 +7,7 @@ use craft\base\Model;
 use craft\base\Plugin;
 use tallowandsons\lantern\models\Settings;
 use tallowandsons\lantern\services\CacheService;
+use tallowandsons\lantern\services\DatabaseService;
 use tallowandsons\lantern\services\LogService;
 use tallowandsons\lantern\twig\LanternLoader;
 
@@ -20,6 +21,7 @@ use tallowandsons\lantern\twig\LanternLoader;
  * @copyright Tallow & Sons
  * @license https://craftcms.github.io/license/ Craft License
  * @property-read CacheService $cacheService
+ * @property-read DatabaseService $databaseService
  */
 class Lantern extends Plugin
 {
@@ -32,6 +34,7 @@ class Lantern extends Plugin
             'components' => [
                 'log' => LogService::class,
                 'cacheService' => CacheService::class,
+                'databaseService' => DatabaseService::class,
             ],
         ];
     }

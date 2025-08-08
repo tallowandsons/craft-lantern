@@ -26,10 +26,10 @@ class CacheService extends Component
     private const CACHE_DURATION = 86400;
 
     /**
-     * @var array Cumulative template hit counts (persisted to cache)
-     * Format: ['template/path.twig' => total_hit_count, ...]
+     * @var array Cumulative template usage data (persisted to cache)
+     * Format: ['template/path.twig' => ['hits' => count, 'lastHit' => timestamp], ...]
      */
-    private array $templateHits = [];
+    private array $templateData = [];
 
     /**
      * @var bool Whether we've loaded cache data this request
@@ -45,10 +45,10 @@ class CacheService extends Component
             return;
         }
 
-        // Load cumulative template hits from cache
-        $cachedHits = Craft::$app->getCache()->get(self::CACHE_KEY_HITS);
-        if ($cachedHits !== false) {
-            $this->templateHits = $cachedHits;
+        // Load cumulative template data from cache
+        $cachedData = Craft::$app->getCache()->get(self::CACHE_KEY_HITS);
+        if ($cachedData !== false) {
+            $this->templateData = $cachedData;
         }
 
         $this->cacheLoaded = true;
@@ -59,10 +59,10 @@ class CacheService extends Component
      */
     private function saveCacheData(): void
     {
-        // Save cumulative template hits to cache
+        // Save cumulative template data to cache
         Craft::$app->getCache()->set(
             self::CACHE_KEY_HITS,
-            $this->templateHits,
+            $this->templateData,
             self::CACHE_DURATION
         );
     }
@@ -75,12 +75,17 @@ class CacheService extends Component
         // Load cache data first
         $this->loadCacheData();
 
-        // Increment the hit count in memory (no de-duplication)
-        if (!isset($this->templateHits[$templateName])) {
-            $this->templateHits[$templateName] = 0;
+        // Initialize template data if not exists
+        if (!isset($this->templateData[$templateName])) {
+            $this->templateData[$templateName] = [
+                'hits' => 0,
+                'lastHit' => null,
+            ];
         }
 
-        $this->templateHits[$templateName]++;
+        // Increment the hit count and update timestamp
+        $this->templateData[$templateName]['hits']++;
+        $this->templateData[$templateName]['lastHit'] = time();
 
         // Save to cache immediately
         $this->saveCacheData();
@@ -90,14 +95,29 @@ class CacheService extends Component
     }
 
     /**
-     * Get all accumulated template hits for this request
+     * Get all accumulated template usage data
+     *
+     * @return array Format: ['template/path.twig' => ['hits' => count, 'lastHit' => timestamp], ...]
+     */
+    public function getTemplateData(): array
+    {
+        $this->loadCacheData();
+        return $this->templateData;
+    }
+
+    /**
+     * Get all accumulated template hits (legacy method for backwards compatibility)
      *
      * @return array Format: ['template/path.twig' => hit_count, ...]
      */
     public function getTemplateHits(): array
     {
         $this->loadCacheData();
-        return $this->templateHits;
+        $hits = [];
+        foreach ($this->templateData as $template => $data) {
+            $hits[$template] = $data['hits'];
+        }
+        return $hits;
     }
 
     /**
@@ -106,15 +126,24 @@ class CacheService extends Component
     public function getTemplateHitCount(string $templateName): int
     {
         $this->loadCacheData();
-        return $this->templateHits[$templateName] ?? 0;
+        return $this->templateData[$templateName]['hits'] ?? 0;
     }
 
     /**
-     * Clear all accumulated template hits
+     * Get last hit timestamp for a specific template
+     */
+    public function getTemplateLastHit(string $templateName): ?int
+    {
+        $this->loadCacheData();
+        return $this->templateData[$templateName]['lastHit'] ?? null;
+    }
+
+    /**
+     * Clear all accumulated template data
      */
     public function clearTemplateHits(): void
     {
-        $this->templateHits = [];
+        $this->templateData = [];
 
         // Clear the persistent cache
         Craft::$app->getCache()->delete(self::CACHE_KEY_HITS);
@@ -123,20 +152,24 @@ class CacheService extends Component
     }
 
     /**
-     * Get the total number of unique templates tracked this request
+     * Get the total number of unique templates tracked
      */
     public function getTemplateCount(): int
     {
         $this->loadCacheData();
-        return count($this->templateHits);
+        return count($this->templateData);
     }
 
     /**
-     * Get the total number of hits across all templates this request
+     * Get the total number of hits across all templates
      */
     public function getTotalHits(): int
     {
         $this->loadCacheData();
-        return array_sum($this->templateHits);
+        $totalHits = 0;
+        foreach ($this->templateData as $data) {
+            $totalHits += $data['hits'];
+        }
+        return $totalHits;
     }
 }
