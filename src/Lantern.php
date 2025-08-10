@@ -5,12 +5,16 @@ namespace tallowandsons\lantern;
 use Craft;
 use craft\base\Model;
 use craft\base\Plugin;
+use craft\events\RegisterComponentTypesEvent;
+use craft\services\Utilities;
 use tallowandsons\lantern\models\Settings;
 use tallowandsons\lantern\services\CacheService;
 use tallowandsons\lantern\services\DatabaseService;
 use tallowandsons\lantern\services\InventoryService;
 use tallowandsons\lantern\services\LogService;
 use tallowandsons\lantern\twig\LanternLoader;
+use tallowandsons\lantern\utilities\TemplateUsage;
+use yii\base\Event;
 
 /**
  * Lantern plugin
@@ -86,6 +90,9 @@ class Lantern extends Plugin
     {
         // Register event handlers here ...
         // (see https://craftcms.com/docs/5.x/extend/events.html to get started)
+        Event::on(Utilities::class, Utilities::EVENT_REGISTER_UTILITIES, function (RegisterComponentTypesEvent $event) {
+            $event->types[] = TemplateUsage::class;
+        });
     }
 
     public function debuggingEnabled(): bool
