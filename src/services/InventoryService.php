@@ -190,19 +190,34 @@ class InventoryService extends Component
      */
     private function shouldSkipTemplate(string $templateName): bool
     {
-        // Skip hidden files, backup files, etc.
-        $skipPatterns = [
-            '/^\.',           // Hidden files
-            '/~$/',           // Backup files
-            '/\.bak$/',       // Backup files
-            '/\.tmp$/',       // Temporary files
-            '/\.DS_Store$/',  // macOS system files
-        ];
+        // Avoid regex to prevent delimiter errors; operate on the basename
+        // so we only consider the file name, not directories in the path.
+        $basename = basename($templateName);
 
-        foreach ($skipPatterns as $pattern) {
-            if (preg_match($pattern, $templateName)) {
+        if ($basename === '') {
+            return false;
+        }
+
+        // Hidden files (e.g. .gitkeep, .DS_Store)
+        if ($basename[0] === '.') {
+            return true;
+        }
+
+        // Backup/temporary suffixes
+        if (substr($basename, -1) === '~') {
+            return true;
+        }
+
+        foreach ([".bak", ".tmp"] as $suffix) {
+            $len = strlen($suffix);
+            if ($len > 0 && substr($basename, -$len) === $suffix) {
                 return true;
             }
+        }
+
+        // Explicit macOS system file
+        if ($basename === '.DS_Store') {
+            return true;
         }
 
         return false;
