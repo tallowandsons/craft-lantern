@@ -55,7 +55,6 @@ class DatabaseService extends Component
                 // Update total usage record
                 $totalRecord = TemplateUsageTotalRecord::findOrCreate($template, $currentSiteId);
                 $totalRecord->totalHits += $hits;
-                $totalRecord->pageHits += 1; // Each flush represents page loads, not individual renders
                 $totalRecord->lastUsed = gmdate('Y-m-d H:i:s', $lastHit);
                 if (!$totalRecord->firstSeen) {
                     $totalRecord->firstSeen = $now;
@@ -154,7 +153,6 @@ class DatabaseService extends Component
             $stats[] = [
                 'template' => $record->template,
                 'totalHits' => $record->totalHits,
-                'pageHits' => $record->pageHits,
                 'lastUsed' => $record->lastUsed,
             ];
         }
@@ -210,7 +208,6 @@ class DatabaseService extends Component
             $unused[] = [
                 'template' => $record->template,
                 'totalHits' => $record->totalHits,
-                'pageHits' => $record->pageHits,
                 'lastUsed' => $record->lastUsed,
                 'daysSinceLastUse' => $record->lastUsed
                     ? round((time() - strtotime($record->lastUsed)) / 86400)

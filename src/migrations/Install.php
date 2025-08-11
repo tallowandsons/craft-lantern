@@ -41,7 +41,6 @@ class Install extends Migration
                 'template' => $this->string(255)->notNull(),
                 'siteId' => $this->integer()->notNull(),
                 'totalHits' => $this->integer()->unsigned()->notNull()->defaultValue(0),
-                'pageHits' => $this->integer()->unsigned()->notNull()->defaultValue(0),
                 'lastUsed' => $this->dateTime()->null(),
                 'firstSeen' => $this->dateTime()->null(),
                 'dateCreated' => $this->dateTime()->notNull(),

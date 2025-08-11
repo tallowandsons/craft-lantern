@@ -292,7 +292,6 @@ class InventoryService extends Component
             SELECT
                 u.template,
                 u.totalHits,
-                u.pageHits,
                 u.lastUsed
             FROM {{%lantern_usage_total}} u
             LEFT JOIN {{%lantern_templateinventory}} i ON u.template = i.template AND u.siteId = i.siteId

@@ -11,7 +11,6 @@ use craft\db\ActiveRecord;
  * @property string $template
  * @property int $siteId
  * @property int $totalHits
- * @property int $pageHits
  * @property string|null $lastUsed
  * @property string|null $firstSeen
  * @property string $dateCreated
@@ -43,7 +42,6 @@ class TemplateUsageTotalRecord extends ActiveRecord
             $record->template = $template;
             $record->siteId = $siteId;
             $record->totalHits = 0;
-            $record->pageHits = 0;
             $record->firstSeen = gmdate('Y-m-d H:i:s');
         }
 

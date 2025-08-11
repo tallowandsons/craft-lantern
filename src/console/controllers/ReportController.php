@@ -175,29 +175,26 @@ class ReportController extends Controller
         }
 
         $this->stdout("Total Usage (All Time):\n", \yii\helpers\Console::FG_YELLOW);
-        $this->stdout(str_repeat("-", 120) . "\n");
-        $this->stdout(sprintf("%-60s %10s %10s %s\n", "Template", "Total Hits", "Page Hits", "Last Used"));
-        $this->stdout(str_repeat("-", 120) . "\n");
+        $this->stdout(str_repeat("-", 100) . "\n");
+        $this->stdout(sprintf("%-60s %10s %s\n", "Template", "Total Hits", "Last Used"));
+        $this->stdout(str_repeat("-", 100) . "\n");
 
         foreach ($totalStats as $stat) {
             $lastUsed = $stat['lastUsed'] ? date('Y-m-d H:i', strtotime($stat['lastUsed'])) : 'Never';
             $this->stdout(sprintf(
-                "%-60s %10d %10d %s\n",
+                "%-60s %10d %s\n",
                 $stat['template'],
                 $stat['totalHits'],
-                $stat['pageHits'],
                 $lastUsed
             ));
         }
 
         $totalTemplates = count($totalStats);
         $totalHits = array_sum(array_column($totalStats, 'totalHits'));
-        $totalPageHits = array_sum(array_column($totalStats, 'pageHits'));
 
         $this->stdout("\nSummary:\n", \yii\helpers\Console::FG_YELLOW);
         $this->stdout("  Total templates: {$totalTemplates}\n");
         $this->stdout("  Total hits: {$totalHits}\n");
-        $this->stdout("  Total page hits: {$totalPageHits}\n");
 
         return ExitCode::OK;
     }
@@ -250,7 +247,6 @@ class ReportController extends Controller
                 i.filePath,
                 i.fileModified,
                 u.totalHits,
-                u.pageHits,
                 u.lastUsed
             FROM {{%lantern_templateinventory}} i
             LEFT JOIN {{%lantern_usage_total}} u ON i.template = u.template AND i.siteId = u.siteId
@@ -454,17 +450,16 @@ class ReportController extends Controller
         if (empty($missingTemplates)) {
             $this->stdout("  None found - all used templates have files!\n", \yii\helpers\Console::FG_GREEN);
         } else {
-            $this->stdout(str_repeat("-", 100) . "\n");
-            $this->stdout(sprintf("%-60s %10s %10s %s\n", "Template", "Total Hits", "Page Hits", "Last Used"));
-            $this->stdout(str_repeat("-", 100) . "\n");
+            $this->stdout(str_repeat("-", 90) . "\n");
+            $this->stdout(sprintf("%-60s %10s %s\n", "Template", "Total Hits", "Last Used"));
+            $this->stdout(str_repeat("-", 90) . "\n");
 
             foreach ($missingTemplates as $template) {
                 $lastUsed = $template['lastUsed'] ? date('Y-m-d H:i', strtotime($template['lastUsed'])) : 'Never';
                 $this->stdout(sprintf(
-                    "%-60s %10d %10d %s\n",
+                    "%-60s %10d %s\n",
                     substr($template['template'], 0, 59),
                     $template['totalHits'],
-                    $template['pageHits'],
                     $lastUsed
                 ));
             }
