@@ -4,6 +4,7 @@ namespace tallowandsons\lantern\services;
 
 use Craft;
 use tallowandsons\lantern\Lantern;
+use tallowandsons\lantern\records\MetaRecord;
 use tallowandsons\lantern\records\TemplateUsageTotalRecord;
 use tallowandsons\lantern\records\TemplateUsageDailyRecord;
 use yii\base\Component;
@@ -36,8 +37,8 @@ class DatabaseService extends Component
         }
 
         $currentSiteId = Craft::$app->getSites()->getCurrentSite()->id;
-        $today = date('Y-m-d');
-        $now = date('Y-m-d H:i:s');
+        $today = gmdate('Y-m-d');
+        $now = gmdate('Y-m-d H:i:s');
 
         $templatesProcessed = 0;
         $totalHitsProcessed = 0;
@@ -55,7 +56,10 @@ class DatabaseService extends Component
                 $totalRecord = TemplateUsageTotalRecord::findOrCreate($template, $currentSiteId);
                 $totalRecord->totalHits += $hits;
                 $totalRecord->pageHits += 1; // Each flush represents page loads, not individual renders
-                $totalRecord->lastUsed = date('Y-m-d H:i:s', $lastHit);
+                $totalRecord->lastUsed = gmdate('Y-m-d H:i:s', $lastHit);
+                if (!$totalRecord->firstSeen) {
+                    $totalRecord->firstSeen = $now;
+                }
 
                 if (!$totalRecord->save()) {
                     $errors[] = "Failed to save total usage for template: {$template}";
@@ -76,6 +80,19 @@ class DatabaseService extends Component
             }
 
             if (empty($errors)) {
+                // On first successful flush, set trackingStartedAt (global and per site) if empty
+                $globalMeta = MetaRecord::findOrCreate(0);
+                if (!$globalMeta->trackingStartedAt) {
+                    $globalMeta->trackingStartedAt = $now;
+                    $globalMeta->save(false);
+                }
+
+                $siteMeta = MetaRecord::findOrCreate($currentSiteId);
+                if (!$siteMeta->trackingStartedAt) {
+                    $siteMeta->trackingStartedAt = $now;
+                    $siteMeta->save(false);
+                }
+
                 // Clear the cache after successful database flush
                 $cacheService->clearTemplateHits();
                 $transaction->commit();

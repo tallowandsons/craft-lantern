@@ -7,6 +7,10 @@
     <div class="lantern-pane"><strong>Active</strong><div>{{ s.active|number_format }}</div></div>
   </div>
 
+  {% if trackingSince %}
+    <p class="light">Note: “Never Used” means “Never used since tracking started on {{ trackingSince|date }}".{% if newTemplateDays > 0 %} New templates are those first seen within the last {{ newTemplateDays }} days.{% endif %}</p>
+  {% endif %}
+
   <hr>
 
   <form method="get" class="lantern-filters">
@@ -16,9 +20,10 @@
         {% set statuses = {
           'all':'All',
           'never':'Never Used',
+          (newTemplateDays > 0 ? 'new' : null) : (newTemplateDays > 0 ? 'New' : null),
           'stale':'Stale',
           'active':'Active'
-        } %}
+        }|filter %}
         {% for key,label in statuses %}
           <option value="{{ key }}" {{ filters.status == key ? 'selected' }}>{{ label }}</option>
         {% endfor %}
@@ -73,6 +78,8 @@
               <span class="status light"></span> Unused
             {% elseif row.status == 'stale' %}
               <span class="status warning"></span> Stale
+            {% elseif row.status == 'new' %}
+              <span class="status sky"></span> New
             {% else %}
               <span class="status live"></span> Active
             {% endif %}

@@ -44,6 +44,7 @@ class TemplateUsage extends Utility
         // Configurable cutoff for staleness
         $settings = Lantern::getInstance()->getSettings();
         $staleDays = property_exists($settings, 'staleDays') && $settings->staleDays > 0 ? (int)$settings->staleDays : 90;
+        $newTemplateDays = property_exists($settings, 'newTemplateDays') ? max(0, (int)$settings->newTemplateDays) : 7;
         $cutoffDate = date('Y-m-d H:i:s', strtotime("-{$staleDays} days"));
 
         // Filters & sorting from query params
@@ -57,8 +58,10 @@ class TemplateUsage extends Utility
             SELECT
                 i.template,
                 i.filePath,
+        i.firstSeen AS inventoryFirstSeen,
                 u.totalHits,
                 u.lastUsed,
+        u.firstSeen AS usageFirstSeen,
                 CASE
                     WHEN u.template IS NULL OR u.lastUsed IS NULL THEN 'never'
                     WHEN u.lastUsed < :cutoffDate THEN 'stale'
@@ -81,6 +84,17 @@ class TemplateUsage extends Utility
         $never = 0;
         $stale = 0;
         $active = 0;
+        $trackingSince = null;
+        // Fetch trackingStartedAt for site
+        $meta = Craft::$app->getDb()->createCommand('SELECT trackingStartedAt FROM {{%lantern_meta}} WHERE siteId = :siteId', [':siteId' => $siteId])->queryOne();
+        if ($meta && !empty($meta['trackingStartedAt'])) {
+            $trackingSince = $meta['trackingStartedAt'];
+        } else {
+            // fall back to global
+            $meta = Craft::$app->getDb()->createCommand('SELECT trackingStartedAt FROM {{%lantern_meta}} WHERE siteId = 0')->queryOne();
+            $trackingSince = $meta['trackingStartedAt'] ?? null;
+        }
+
         foreach ($rows as $r) {
             if ($r['status'] === 'never') {
                 $never++;
@@ -92,7 +106,7 @@ class TemplateUsage extends Utility
         }
 
         // Filter
-        if (in_array($statusFilter, ['never', 'stale', 'active'], true)) {
+        if (in_array($statusFilter, ['never', 'stale', 'active', 'new'], true)) {
             $rows = array_values(array_filter($rows, fn($r) => $r['status'] === $statusFilter));
         }
 
@@ -100,6 +114,15 @@ class TemplateUsage extends Utility
         foreach ($rows as &$r) {
             $r['totalHits'] = isset($r['totalHits']) ? (int)$r['totalHits'] : 0;
             $r['lastUsed'] = $r['lastUsed'] ?? null;
+            $firstSeen = $r['usageFirstSeen'] ?? $r['inventoryFirstSeen'] ?? null;
+            $r['firstSeen'] = $firstSeen;
+            // Derive "new" status if enabled, never used, and recently first seen
+            if ($newTemplateDays > 0 && ($r['status'] === 'never') && $firstSeen) {
+                $isNew = (strtotime($firstSeen) >= strtotime("-{$newTemplateDays} days"));
+                if ($isNew) {
+                    $r['status'] = 'new';
+                }
+            }
         }
         unset($r);
 
@@ -138,6 +161,8 @@ class TemplateUsage extends Utility
             ],
             'rows' => $rows,
             'staleDays' => $staleDays,
+            'newTemplateDays' => $newTemplateDays,
+            'trackingSince' => $trackingSince,
             'filters' => [
                 'status' => $statusFilter,
                 'sort' => $sort,

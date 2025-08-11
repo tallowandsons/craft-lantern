@@ -60,8 +60,8 @@ class InventoryService extends Component
                 }
 
                 // Get file info
-                $fileModified = date('Y-m-d H:i:s', filemtime($filePath));
-                $now = date('Y-m-d H:i:s');
+                $fileModified = gmdate('Y-m-d H:i:s', filemtime($filePath));
+                $now = gmdate('Y-m-d H:i:s');
 
                 // Find or create inventory record
                 $record = TemplateInventoryRecord::findOrCreate($templateName, $siteId);
@@ -71,6 +71,9 @@ class InventoryService extends Component
                 $record->filePath = $relativePath;
                 $record->fileModified = $fileModified;
                 $record->isActive = true;
+                if ($isNew && !$record->firstSeen) {
+                    $record->firstSeen = $now;
+                }
                 $record->lastScanned = $now;
 
                 if ($record->save()) {

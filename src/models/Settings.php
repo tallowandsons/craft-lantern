@@ -21,6 +21,11 @@ class Settings extends Model
     public int $staleDays = 90;
 
     /**
+     * @var int Number of days to consider a never-used template as "new"
+     */
+    public int $newTemplateDays = 7;
+
+    /**
      * @inheritdoc
      */
     public function defineRules(): array
@@ -28,6 +33,7 @@ class Settings extends Model
         return [
             ['enableDebugLogging', 'boolean'],
             ['staleDays', 'integer', 'min' => 1],
+            ['newTemplateDays', 'integer', 'min' => 1],
         ];
     }
 }

@@ -3,4 +3,26 @@
 
 {% import '_includes/forms.twig' as forms %}
 
-{# ... #}
+<div class="field">
+    <div class="heading"><label for="staleDays">Stale after (days)</label></div>
+    {{ forms.textField({
+        id: 'staleDays',
+        name: 'staleDays',
+        value: settings.staleDays,
+        size: 4,
+        type: 'number',
+        min: 1
+    }) }}
+</div>
+
+<div class="field">
+    <div class="heading"><label for="newTemplateDays">New template window (days)</label></div>
+    {{ forms.textField({
+        id: 'newTemplateDays',
+        name: 'newTemplateDays',
+        value: settings.newTemplateDays,
+        size: 4,
+        type: 'number',
+        min: 1
+    }) }}
+</div>

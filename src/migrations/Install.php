@@ -15,6 +15,25 @@ class Install extends Migration
      */
     public function safeUp(): bool
     {
+        // Create lantern_meta table
+        if (!$this->db->tableExists('{{%lantern_meta}}')) {
+            $this->createTable('{{%lantern_meta}}', [
+                'id' => $this->primaryKey(),
+                'siteId' => $this->integer()->notNull()->defaultValue(0),
+                'trackingStartedAt' => $this->dateTime()->null(),
+                'dateCreated' => $this->dateTime()->notNull(),
+                'dateUpdated' => $this->dateTime()->notNull(),
+                'uid' => $this->uid(),
+            ]);
+
+            $this->createIndex(
+                'idx_lantern_meta_site',
+                '{{%lantern_meta}}',
+                'siteId',
+                true // unique per site
+            );
+        }
+
         // Create lantern_usage_total table
         if (!$this->db->tableExists('{{%lantern_usage_total}}')) {
             $this->createTable('{{%lantern_usage_total}}', [
@@ -24,6 +43,7 @@ class Install extends Migration
                 'totalHits' => $this->integer()->unsigned()->notNull()->defaultValue(0),
                 'pageHits' => $this->integer()->unsigned()->notNull()->defaultValue(0),
                 'lastUsed' => $this->dateTime()->null(),
+                'firstSeen' => $this->dateTime()->null(),
                 'dateCreated' => $this->dateTime()->notNull(),
                 'dateUpdated' => $this->dateTime()->notNull(),
                 'uid' => $this->uid(),
@@ -45,6 +65,11 @@ class Install extends Migration
                 'idx_lantern_usage_total_lastused',
                 '{{%lantern_usage_total}}',
                 'lastUsed'
+            );
+            $this->createIndex(
+                'idx_lantern_usage_total_firstseen',
+                '{{%lantern_usage_total}}',
+                'firstSeen'
             );
         }
 
@@ -89,6 +114,7 @@ class Install extends Migration
                 'filePath' => $this->string(500)->notNull(),
                 'fileModified' => $this->dateTime()->null(),
                 'isActive' => $this->boolean()->notNull()->defaultValue(true),
+                'firstSeen' => $this->dateTime()->null(),
                 'lastScanned' => $this->dateTime()->notNull(),
                 'dateCreated' => $this->dateTime()->notNull(),
                 'dateUpdated' => $this->dateTime()->notNull(),
@@ -117,6 +143,11 @@ class Install extends Migration
                 '{{%lantern_templateinventory}}',
                 'lastScanned'
             );
+            $this->createIndex(
+                'idx_lantern_inventory_first_seen',
+                '{{%lantern_templateinventory}}',
+                'firstSeen'
+            );
         }
 
         return true;
@@ -131,6 +162,7 @@ class Install extends Migration
         $this->dropTableIfExists('{{%lantern_templateinventory}}');
         $this->dropTableIfExists('{{%lantern_usage_daily}}');
         $this->dropTableIfExists('{{%lantern_usage_total}}');
+        $this->dropTableIfExists('{{%lantern_meta}}');
 
         return true;
     }

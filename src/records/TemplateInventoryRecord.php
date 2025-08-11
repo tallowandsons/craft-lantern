@@ -13,6 +13,7 @@ use craft\db\ActiveRecord;
  * @property string $filePath
  * @property string|null $fileModified
  * @property bool $isActive
+ * @property string|null $firstSeen
  * @property string $lastScanned
  * @property string $dateCreated
  * @property string $dateUpdated
@@ -43,6 +44,7 @@ class TemplateInventoryRecord extends ActiveRecord
             $record->template = $template;
             $record->siteId = $siteId;
             $record->isActive = true;
+            $record->firstSeen = gmdate('Y-m-d H:i:s');
         }
 
         return $record;

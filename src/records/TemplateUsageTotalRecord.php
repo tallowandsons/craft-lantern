@@ -13,6 +13,7 @@ use craft\db\ActiveRecord;
  * @property int $totalHits
  * @property int $pageHits
  * @property string|null $lastUsed
+ * @property string|null $firstSeen
  * @property string $dateCreated
  * @property string $dateUpdated
  * @property string $uid
@@ -43,6 +44,7 @@ class TemplateUsageTotalRecord extends ActiveRecord
             $record->siteId = $siteId;
             $record->totalHits = 0;
             $record->pageHits = 0;
+            $record->firstSeen = gmdate('Y-m-d H:i:s');
         }
 
         return $record;
