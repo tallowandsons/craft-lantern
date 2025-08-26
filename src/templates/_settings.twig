@@ -26,3 +26,42 @@
         min: 1
     }) }}
 </div>
+
+<hr>
+
+<h3>Aggregation &amp; Retention</h3>
+
+<div class="field">
+    <div class="heading"><label for="dailyRetentionDays">Keep daily data (days)</label></div>
+    {{ forms.textField({
+        id: 'dailyRetentionDays',
+        name: 'dailyRetentionDays',
+        value: settings.dailyRetentionDays,
+        size: 4,
+        type: 'number',
+        min: 0
+    }) }}
+    <p class="light">Keep recent daily rows for high-resolution charts (0 = disable daily pruning).</p>
+    <p class="light">Monthly aggregation always processes completed months only.</p>
+    <p class="light">Tip: 90 days is a good default.</p>
+
+    <div class="heading" style="margin-top: 1rem;"><label for="monthlyRetentionMonths">Keep monthly data (months)</label></div>
+    {{ forms.textField({
+        id: 'monthlyRetentionMonths',
+        name: 'monthlyRetentionMonths',
+        value: settings.monthlyRetentionMonths,
+        size: 4,
+        type: 'number',
+        min: 0
+    }) }}
+    <p class="light">Keep long-term monthly rows for trend analysis (0 = keep all months).</p>
+
+    <div class="heading" style="margin-top: 1rem;"><label for="prune">Prune after aggregation</label></div>
+    {{ forms.lightswitchField({
+        id: 'prune',
+        name: 'prune',
+        on: settings.prune,
+        onLabel: 'Enabled',
+        offLabel: 'Disabled'
+    }) }}
+</div>

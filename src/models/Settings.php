@@ -26,6 +26,21 @@ class Settings extends Model
     public int $newTemplateDays = 7;
 
     /**
+     * @var int How many recent days of daily data to keep (0 disables day-based pruning)
+     */
+    public int $dailyRetentionDays = 90;
+
+    /**
+     * @var int How many recent months of monthly data to keep (0 disables monthly pruning)
+     */
+    public int $monthlyRetentionMonths = 24;
+
+    /**
+     * @var bool Whether to prune data after aggregation by default
+     */
+    public bool $prune = true;
+
+    /**
      * @inheritdoc
      */
     public function defineRules(): array
@@ -34,6 +49,9 @@ class Settings extends Model
             ['enableDebugLogging', 'boolean'],
             ['staleDays', 'integer', 'min' => 1],
             ['newTemplateDays', 'integer', 'min' => 1],
+            ['dailyRetentionDays', 'integer', 'min' => 0],
+            ['monthlyRetentionMonths', 'integer', 'min' => 0],
+            ['prune', 'boolean'],
         ];
     }
 }
