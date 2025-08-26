@@ -41,6 +41,27 @@ class Settings extends Model
     public bool $prune = true;
 
     /**
+     * @var bool Enable background auto-flush from cache to DB (via queue)
+     */
+    public bool $autoFlushEnabled = true;
+
+    /**
+     * @var int Minimum seconds between background flush enqueues (debounce)
+     */
+    public int $autoFlushIntervalSeconds = 300;
+
+    /**
+     * @var bool Only enqueue auto-flush on CP requests (off = also on site requests)
+     */
+    public bool $autoFlushOnlyOnCpRequests = false;
+
+    /**
+     * @var int Minimum seconds between monthly aggregation runs (throttle)
+     */
+    public int $aggregateIntervalSeconds = 43200; // 12 hours default
+
+
+    /**
      * @inheritdoc
      */
     public function defineRules(): array
@@ -52,6 +73,10 @@ class Settings extends Model
             ['dailyRetentionDays', 'integer', 'min' => 0],
             ['monthlyRetentionMonths', 'integer', 'min' => 0],
             ['prune', 'boolean'],
+            ['autoFlushEnabled', 'boolean'],
+            ['autoFlushOnlyOnCpRequests', 'boolean'],
+            ['autoFlushIntervalSeconds', 'integer', 'min' => 60],
+            ['aggregateIntervalSeconds', 'integer', 'min' => 600],
         ];
     }
 }

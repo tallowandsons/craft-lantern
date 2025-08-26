@@ -9,6 +9,8 @@ use tallowandsons\lantern\records\TemplateUsageTotalRecord;
 use tallowandsons\lantern\records\TemplateUsageDailyRecord;
 use tallowandsons\lantern\records\TemplateUsageMonthlyRecord;
 use yii\base\Component;
+use yii\db\Query;
+use yii\db\Expression;
 
 /**
  * Database Service
@@ -26,6 +28,17 @@ class DatabaseService extends Component
     public function flushCacheToDatabase(): array
     {
         $cacheService = Lantern::getInstance()->cacheService;
+        $mutex = Craft::$app->getMutex();
+
+        // Avoid overlapping flushes
+        if (!$mutex->acquire('lantern:flush', 0)) {
+            return [
+                'success' => true,
+                'message' => 'Flush already in progress',
+                'templatesProcessed' => 0,
+                'totalHitsProcessed' => 0,
+            ];
+        }
         $templateData = $cacheService->getTemplateData();
 
         if (empty($templateData)) {
@@ -95,6 +108,8 @@ class DatabaseService extends Component
 
                 // Clear the cache after successful database flush
                 $cacheService->clearTemplateHits();
+                // Allow next queue after success
+                Craft::$app->getCache()->delete('lantern:flush:queued');
                 $transaction->commit();
 
                 Lantern::getInstance()->log->info(
@@ -134,6 +149,8 @@ class DatabaseService extends Component
                 'totalHitsProcessed' => 0,
                 'exception' => $e->getMessage(),
             ];
+        } finally {
+            $mutex->release('lantern:flush');
         }
     }
 
@@ -184,13 +201,6 @@ class DatabaseService extends Component
 
         // Build month range (inclusive bounds in terms of months)
         // We'll query daily rows prior to first day of this month and within overrides.
-        $params = [];
-        $siteFilterSql = '';
-        if ($siteIds && count($siteIds) > 0) {
-            $placeholders = implode(',', array_fill(0, count($siteIds), '?'));
-            $siteFilterSql = " AND d.siteId IN ($placeholders)";
-            $params = array_merge($params, $siteIds);
-        }
 
         $startBoundary = null;
         if ($sinceMonth) {
@@ -200,68 +210,36 @@ class DatabaseService extends Component
 
         // Find candidate months (completed) that exist in daily and are not logged
         $driver = $db->getIsMysql() ? 'mysql' : ($db->getIsPgsql() ? 'pgsql' : 'other');
-        if ($driver === 'mysql') {
-            $sql = "
-                SELECT DISTINCT
-                    d.siteId,
-                    DATE_FORMAT(d.day, '%Y-%m-01') AS month
-                FROM {{%lantern_usage_daily}} d
-                LEFT JOIN {{%lantern_aggregate_month_log}} l
-                    ON l.siteId = d.siteId
-                    AND l.month = DATE_FORMAT(d.day, '%Y-%m-01')
-                WHERE d.day < ?
-                  AND l.id IS NULL
-                  " . ($startBoundary ? " AND d.day >= ?" : "") . "
-                  AND DATE_FORMAT(d.day, '%Y-%m-01') <= ?
-                  $siteFilterSql
-                ORDER BY d.siteId, month
-            ";
+        $monthExpr = $driver === 'mysql'
+            ? new Expression("DATE_FORMAT(d.day, '%Y-%m-01')")
+            : new Expression("DATE_TRUNC('month', d.day)::date");
 
-            $queryParams = [$firstDayThisMonth];
-            if ($startBoundary) {
-                $queryParams[] = $startBoundary;
-            }
-            $queryParams[] = $endBoundary;
-            $queryParams = array_merge($queryParams, $params);
-            $candidates = $db->createCommand($sql, $queryParams)->queryAll();
-        } else { // pgsql and others
-            $sql = "
-                SELECT DISTINCT
-                    d.siteId,
-                    DATE_TRUNC('month', d.day)::date AS month
-                FROM {{%lantern_usage_daily}} d
-                LEFT JOIN {{%lantern_aggregate_month_log}} l
-                    ON l.siteId = d.siteId
-                    AND l.month = DATE_TRUNC('month', d.day)::date
-                WHERE d.day < :firstDayThisMonth
-                  AND l.id IS NULL
-                  " . ($startBoundary ? " AND d.day >= :startBoundary" : "") . "
-                  AND DATE_TRUNC('month', d.day) <= :endBoundary::date
-                  $siteFilterSql
-                ORDER BY d.siteId, month
-            ";
+        $joinCondition = $driver === 'mysql'
+            ? new Expression("l.siteId = d.siteId AND l.month = DATE_FORMAT(d.day, '%Y-%m-01')")
+            : new Expression("l.siteId = d.siteId AND l.month = DATE_TRUNC('month', d.day)::date");
 
-            $queryParams = [':firstDayThisMonth' => $firstDayThisMonth];
-            if ($startBoundary) {
-                $queryParams[':startBoundary'] = $startBoundary;
-            }
-            $queryParams[':endBoundary'] = $endBoundary;
-            // For site filter using positional placeholders we used above; adapt to named
-            if ($siteIds && count($siteIds) > 0) {
-                // rebuild SQL with IN (:s0,:s1,...)
-                $inNames = [];
-                $i = 0;
-                foreach ($siteIds as $sid) {
-                    $inNames[] = ":s$i";
-                    $queryParams[":s$i"] = (int)$sid;
-                    $i++;
-                }
-                $sql = str_replace($siteFilterSql, ' AND d.siteId IN (' . implode(',', $inNames) . ')', $sql);
-            } else {
-                $sql = str_replace($siteFilterSql, '', $sql);
-            }
-            $candidates = $db->createCommand($sql, $queryParams)->queryAll();
+        $query = (new Query())
+            ->select([
+                'siteId' => 'd.siteId',
+                'month' => $monthExpr,
+            ])
+            ->from(['d' => '{{%lantern_usage_daily}}'])
+            ->leftJoin(['l' => '{{%lantern_aggregate_month_log}}'], $joinCondition)
+            ->where(['<', 'd.day', $firstDayThisMonth])
+            ->andWhere(['l.id' => null])
+            ->distinct()
+            ->orderBy(['siteId' => SORT_ASC, 'month' => SORT_ASC]);
+
+        if ($startBoundary) {
+            $query->andWhere(['>=', 'd.day', $startBoundary]);
         }
+        // Ensure the computed month is within end boundary
+        $query->andWhere(['<=', $monthExpr, $endBoundary]);
+        if ($siteIds && count($siteIds) > 0) {
+            $query->andWhere(['d.siteId' => array_map('intval', $siteIds)]);
+        }
+
+        $candidates = $query->all();
 
         $monthsProcessed = 0;
         $templatesAggregated = 0;
@@ -272,30 +250,23 @@ class DatabaseService extends Component
             $siteId = (int)$row['siteId'];
             $monthStr = $row['month']; // 'YYYY-MM-01'
 
-            // Aggregate sums per template
-            if ($driver === 'mysql') {
-                $sumSql = "
-                                        SELECT d.template, SUM(d.hits) AS hits
-                                        FROM {{%lantern_usage_daily}} d
-                                        WHERE d.siteId = :siteId
-                                            AND d.day >= :monthStart AND d.day < DATE_ADD(:monthStart, INTERVAL 1 MONTH)
-                                        GROUP BY d.template
-                                ";
-            } else {
-                $sumSql = "
-                                        SELECT d.template, SUM(d.hits) AS hits
-                                        FROM {{%lantern_usage_daily}} d
-                                        WHERE d.siteId = :siteId
-                                            AND d.day >= :monthStart AND d.day < (:monthStart::date + INTERVAL '1 month')
-                                        GROUP BY d.template
-                                ";
-            }
-
+            // Aggregate sums per template using Query Builder; compute monthEnd in PHP
             $monthStart = $monthStr;
-            $sums = $db->createCommand($sumSql, [
-                ':siteId' => $siteId,
-                ':monthStart' => $monthStart,
-            ])->queryAll();
+            $monthEnd = (new \DateTimeImmutable($monthStart, new \DateTimeZone('UTC')))
+                ->modify('+1 month')
+                ->format('Y-m-d');
+
+            $sums = (new Query())
+                ->select([
+                    'template' => 'd.template',
+                    'hits' => new Expression('SUM(d.hits)'),
+                ])
+                ->from(['d' => '{{%lantern_usage_daily}}'])
+                ->where(['d.siteId' => $siteId])
+                ->andWhere(['>=', 'd.day', $monthStart])
+                ->andWhere(['<', 'd.day', $monthEnd])
+                ->groupBy(['d.template'])
+                ->all();
 
             if ($dryRun) {
                 $templatesAggregated += count($sums);
@@ -352,30 +323,19 @@ class DatabaseService extends Component
             if ($dailyRetentionDays !== null && $dailyRetentionDays > 0) {
                 // Strategy A: keep last N days
                 $cutoff = (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->modify('-' . (int)$dailyRetentionDays . ' days')->format('Y-m-d');
-                $dailyRowsPruned = $db->createCommand(
-                    'DELETE FROM {{%lantern_usage_daily}} WHERE day < :cutoff',
-                    [':cutoff' => $cutoff]
-                )->execute();
+                $dailyRowsPruned = TemplateUsageDailyRecord::deleteAll(['<', 'day', $cutoff]);
             } else {
                 // Strategy B: delete exact months processed
                 foreach ($months as [$siteId, $monthStart]) {
-                    if ($driver === 'mysql') {
-                        $dailyRowsPruned += $db->createCommand(
-                            'DELETE FROM {{%lantern_usage_daily}} WHERE siteId = :siteId AND day >= :start AND day < DATE_ADD(:start, INTERVAL 1 MONTH)',
-                            [
-                                ':siteId' => $siteId,
-                                ':start' => $monthStart,
-                            ]
-                        )->execute();
-                    } else {
-                        $dailyRowsPruned += $db->createCommand(
-                            "DELETE FROM {{%lantern_usage_daily}} WHERE siteId = :siteId AND day >= :start AND day < (:start::date + INTERVAL '1 month')",
-                            [
-                                ':siteId' => $siteId,
-                                ':start' => $monthStart,
-                            ]
-                        )->execute();
-                    }
+                    $monthEnd = (new \DateTimeImmutable($monthStart, new \DateTimeZone('UTC')))
+                        ->modify('+1 month')
+                        ->format('Y-m-d');
+                    $dailyRowsPruned += TemplateUsageDailyRecord::deleteAll([
+                        'and',
+                        ['siteId' => $siteId],
+                        ['>=', 'day', $monthStart],
+                        ['<', 'day', $monthEnd],
+                    ]);
                 }
             }
         }
@@ -387,10 +347,7 @@ class DatabaseService extends Component
             $keepFrom = (new \DateTimeImmutable('first day of this month', new \DateTimeZone('UTC')))
                 ->modify('-' . (int)$monthlyRetentionMonths . ' months')
                 ->format('Y-m-d');
-            $monthlyRowsPruned = $db->createCommand(
-                'DELETE FROM {{%lantern_usage_monthly}} WHERE month < :keepFrom',
-                [':keepFrom' => $keepFrom]
-            )->execute();
+            $monthlyRowsPruned = TemplateUsageMonthlyRecord::deleteAll(['<', 'month', $keepFrom]);
         }
 
         return [

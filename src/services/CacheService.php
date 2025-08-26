@@ -4,6 +4,7 @@ namespace tallowandsons\lantern\services;
 
 use Craft;
 use tallowandsons\lantern\Lantern;
+use tallowandsons\lantern\jobs\FlushAndAggregateJob;
 use yii\base\Component;
 
 /**
@@ -19,6 +20,10 @@ class CacheService extends Component
      * @var string Cache key for persistent template hits
      */
     private const CACHE_KEY_HITS = 'lantern_template_hits';
+
+    /** Soft debounce flags for auto-flush queueing */
+    private const CACHE_KEY_FLUSH_QUEUED = 'lantern:flush:queued';
+    private const CACHE_KEY_LAST_FLUSH_AT = 'lantern:flush:last';
 
     /**
      * @var int Cache duration (24 hours)
@@ -90,8 +95,58 @@ class CacheService extends Component
         // Save to cache immediately
         $this->saveCacheData();
 
+        // Enqueue background flush if needed (cheap, non-blocking)
+        $this->maybeQueueFlush();
+
         // Log the increment for debugging (only in debug mode)
         Lantern::getInstance()->log->logTemplateIncrement($templateName);
+    }
+
+    /**
+     * Decide if we should queue a background flush job.
+     * - Throttled by interval
+     * - Optional hit threshold
+     * - Optional CP-only
+     * - Uses a short-lived cache flag to avoid duplicate enqueues across nodes
+     */
+    private function maybeQueueFlush(): void
+    {
+        static $queuedThisRequest = false;
+        if ($queuedThisRequest) {
+            return;
+        }
+
+        $settings = Lantern::getInstance()->getSettings();
+        if (!($settings->autoFlushEnabled ?? true)) {
+            return;
+        }
+        if (($settings->autoFlushOnlyOnCpRequests ?? false) && !Craft::$app->getRequest()->getIsCpRequest()) {
+            return;
+        }
+
+        $cache = Craft::$app->getCache();
+        $interval = max(60, (int)($settings->autoFlushIntervalSeconds ?? 300));
+
+        // Already queued recently?
+        if ($cache->get(self::CACHE_KEY_FLUSH_QUEUED)) {
+            return;
+        }
+
+        // Respect interval
+        $last = (int)($cache->get(self::CACHE_KEY_LAST_FLUSH_AT) ?: 0);
+        if ($last && (time() - $last) < $interval) {
+            return;
+        }
+
+        // Mark as queued and push a background job
+        $cache->set(self::CACHE_KEY_FLUSH_QUEUED, 1, $interval);
+        $cache->set(self::CACHE_KEY_LAST_FLUSH_AT, time(), 86400);
+
+        Craft::$app->getQueue()->push(new FlushAndAggregateJob([
+            'options' => [], // use CP defaults for aggregation/pruning
+        ]));
+
+        $queuedThisRequest = true;
     }
 
     /**

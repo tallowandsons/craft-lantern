@@ -65,3 +65,54 @@
         offLabel: 'Disabled'
     }) }}
 </div>
+
+<hr>
+
+<h3>Auto‑Flush (background)</h3>
+
+<div class="field">
+    {{ forms.lightswitchField({
+        id: 'autoFlushEnabled',
+        name: 'autoFlushEnabled',
+        on: settings.autoFlushEnabled,
+        label: 'Enable auto-flush to database',
+        instructions: 'Queues a background job to persist cache to DB, without blocking web requests.'
+    }) }}
+</div>
+
+<div class="field">
+    {{ forms.textField({
+        id: 'autoFlushIntervalSeconds',
+        name: 'autoFlushIntervalSeconds',
+        value: settings.autoFlushIntervalSeconds,
+        size: 6,
+        type: 'number',
+        min: 60,
+        label: 'Minimum interval (seconds)',
+        instructions: 'Debounce time between background flushes (minimum 60s).'
+    }) }}
+</div>
+
+
+<div class="field">
+    {{ forms.lightswitchField({
+        id: 'autoFlushOnlyOnCpRequests',
+        name: 'autoFlushOnlyOnCpRequests',
+        on: settings.autoFlushOnlyOnCpRequests,
+        label: 'Only queue from Control Panel requests',
+        instructions: 'If enabled, frontend requests will not queue a flush.'
+    }) }}
+</div>
+
+<div class="field">
+    {{ forms.textField({
+        id: 'aggregateIntervalSeconds',
+        name: 'aggregateIntervalSeconds',
+        value: settings.aggregateIntervalSeconds,
+        size: 6,
+        type: 'number',
+        min: 600,
+        label: 'Aggregation interval (seconds)',
+        instructions: 'Minimum time between monthly aggregation runs. Default 12 hours (43200).'
+    }) }}
+</div>
