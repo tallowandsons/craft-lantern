@@ -61,7 +61,7 @@ class Lantern extends Plugin
         Craft::$app->onInit(function () {
             // replace Twig's loader with LanternLoader
             // if site request (not admin request)
-            if (!Craft::$app->getRequest()->getIsCpRequest()) {
+            if ($this->getSettings()->enabled && !Craft::$app->getRequest()->getIsCpRequest()) {
                 $this->replaceLoader();
             }
         });
@@ -87,6 +87,7 @@ class Lantern extends Plugin
         return Craft::$app->view->renderTemplate('lantern/_settings', [
             'plugin' => $this,
             'settings' => $this->getSettings(),
+            'config' => Craft::$app->getConfig()->getConfigFromFile('lantern'),
         ]);
     }
 

@@ -11,6 +11,11 @@ use craft\base\Model;
 class Settings extends Model
 {
     /**
+     * @var bool Master enable switch for Lantern functionality
+     */
+    public bool $enabled = true;
+
+    /**
      * @var bool Whether to enable debug logging
      */
     public bool $enableDebugLogging = false;
@@ -67,6 +72,7 @@ class Settings extends Model
     public function defineRules(): array
     {
         return [
+            ['enabled', 'boolean'],
             ['enableDebugLogging', 'boolean'],
             ['staleDays', 'integer', 'min' => 1],
             ['newTemplateDays', 'integer', 'min' => 1],

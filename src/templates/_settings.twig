@@ -2,6 +2,18 @@
 {# @var settings \tallowandsons\lantern\models\Settings #}
 
 {% import '_includes/forms.twig' as forms %}
+{% from 'cleaver/macros' import configWarning %}
+
+<div class="field">
+    {{ forms.lightswitchField({
+        id: 'enabled',
+        name: 'enabled',
+        on: settings.enabled,
+        label: 'Enable Lantern',
+        instructions: 'Master switch. When disabled, Lantern will not replace the Twig loader or perform template tracking.',
+        warning: (config.enabled is defined ? configWarning('enabled')),
+    }) }}
+</div>
 
 <div class="field">
     <div class="heading"><label for="staleDays">Stale after (days)</label></div>
@@ -11,7 +23,8 @@
         value: settings.staleDays,
         size: 4,
         type: 'number',
-        min: 1
+        min: 1,
+        warning: (config.staleDays is defined ? configWarning('staleDays') : null)
     }) }}
 </div>
 
@@ -23,7 +36,8 @@
         value: settings.newTemplateDays,
         size: 4,
         type: 'number',
-        min: 1
+        min: 1,
+        warning: (config.newTemplateDays is defined ? configWarning('newTemplateDays') : null)
     }) }}
 </div>
 
@@ -39,7 +53,8 @@
         value: settings.dailyRetentionDays,
         size: 4,
         type: 'number',
-        min: 0
+        min: 0,
+        warning: (config.dailyRetentionDays is defined ? configWarning('dailyRetentionDays') : null)
     }) }}
     <p class="light">Keep recent daily rows for high-resolution charts (0 = disable daily pruning).</p>
     <p class="light">Monthly aggregation always processes completed months only.</p>
@@ -52,7 +67,8 @@
         value: settings.monthlyRetentionMonths,
         size: 4,
         type: 'number',
-        min: 0
+        min: 0,
+        warning: (config.monthlyRetentionMonths is defined ? configWarning('monthlyRetentionMonths') : null)
     }) }}
     <p class="light">Keep long-term monthly rows for trend analysis (0 = keep all months).</p>
 
@@ -62,7 +78,8 @@
         name: 'prune',
         on: settings.prune,
         onLabel: 'Enabled',
-        offLabel: 'Disabled'
+        offLabel: 'Disabled',
+        warning: (config.prune is defined ? configWarning('prune') : null)
     }) }}
 </div>
 
@@ -76,7 +93,8 @@
         name: 'autoFlushEnabled',
         on: settings.autoFlushEnabled,
         label: 'Enable auto-flush to database',
-        instructions: 'Queues a background job to persist cache to DB, without blocking web requests.'
+        instructions: 'Queues a background job to persist cache to DB, without blocking web requests.',
+        warning: (config.autoFlushEnabled is defined ? configWarning('autoFlushEnabled') : null)
     }) }}
 </div>
 
@@ -89,7 +107,8 @@
         type: 'number',
         min: 60,
         label: 'Minimum interval (seconds)',
-        instructions: 'Debounce time between background flushes (minimum 60s).'
+        instructions: 'Debounce time between background flushes (minimum 60s).',
+        warning: (config.autoFlushIntervalSeconds is defined ? configWarning('autoFlushIntervalSeconds') : null)
     }) }}
 </div>
 
@@ -100,7 +119,8 @@
         name: 'autoFlushOnlyOnCpRequests',
         on: settings.autoFlushOnlyOnCpRequests,
         label: 'Only queue from Control Panel requests',
-        instructions: 'If enabled, frontend requests will not queue a flush.'
+        instructions: 'If enabled, frontend requests will not queue a flush.',
+        warning: (config.autoFlushOnlyOnCpRequests is defined ? configWarning('autoFlushOnlyOnCpRequests') : null)
     }) }}
 </div>
 
@@ -113,6 +133,7 @@
         type: 'number',
         min: 600,
         label: 'Aggregation interval (seconds)',
-        instructions: 'Minimum time between monthly aggregation runs. Default 12 hours (43200).'
+        instructions: 'Minimum time between monthly aggregation runs. Default 12 hours (43200).',
+        warning: (config.aggregateIntervalSeconds is defined ? configWarning('aggregateIntervalSeconds') : null)
     }) }}
 </div>
