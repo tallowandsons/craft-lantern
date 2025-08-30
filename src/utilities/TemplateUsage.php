@@ -27,7 +27,13 @@ class TemplateUsage extends Utility
 
     public static function icon(): ?string
     {
-        return 'wrench';
+        $iconPath = Craft::getAlias('@tallowandsons/lantern/icon-mask.svg');
+
+        if (!is_string($iconPath)) {
+            return null;
+        }
+
+        return $iconPath;
     }
 
     /**
