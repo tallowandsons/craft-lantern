@@ -85,6 +85,33 @@
 
 <hr>
 
+<h3>Legacy Template Fallback</h3>
+
+<div class="field">
+    {{ forms.lightswitchField({
+        id: 'enableLegacyTemplates',
+        name: 'enableLegacyTemplates',
+        on: settings.enableLegacyTemplates,
+        label: 'Enable Legacy Template Fallback',
+        instructions: 'When enabled, templates will fallback to a legacy directory if not found in the standard locations.',
+        warning: (config.enableLegacyTemplates is defined ? configWarning('enableLegacyTemplates') : null)
+    }) }}
+</div>
+
+<div class="field">
+    {{ forms.textField({
+        id: 'legacyTemplatesDir',
+        name: 'legacyTemplatesDir',
+        value: settings.legacyTemplatesDir,
+        label: 'Legacy Templates Directory Name',
+        instructions: 'Directory name for legacy template fallback (e.g., "_legacy"). Templates will be resolved from `templates/<legacy-directory>/...`',
+        placeholder: '_legacy',
+        warning: (config.legacyTemplatesDir is defined ? configWarning('legacyTemplatesDir') : null)
+    }) }}
+</div>
+
+<hr>
+
 <h3>Auto‑Flush (background)</h3>
 
 <div class="field">

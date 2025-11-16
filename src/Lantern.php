@@ -6,6 +6,7 @@ use Craft;
 use craft\base\Model;
 use craft\base\Plugin;
 use craft\events\RegisterComponentTypesEvent;
+use craft\events\RegisterTemplateRootsEvent;
 use craft\events\TemplateEvent;
 use craft\services\Utilities;
 use craft\web\View;
@@ -98,6 +99,53 @@ class Lantern extends Plugin
         Event::on(Utilities::class, Utilities::EVENT_REGISTER_UTILITIES, function (RegisterComponentTypesEvent $event) {
             $event->types[] = TemplateUsage::class;
         });
+
+        // Add a site-specific legacy templates fallback: templates/_legacy/<siteHandle>/...
+        Event::on(
+            View::class,
+            View::EVENT_REGISTER_SITE_TEMPLATE_ROOTS,
+            function (RegisterTemplateRootsEvent $event) {
+                // Check if legacy templates are enabled
+                if (!$this->getSettings()->enableLegacyTemplates) {
+                    return;
+                }
+
+                try {
+                    $legacyDirName = $this->getSettings()->legacyTemplatesDir ?? '_legacy';
+
+                    $site = Craft::$app->getSites()->getCurrentSite();
+                    $handle = $site->handle ?? null;
+                    if (!$handle) {
+                        return;
+                    }
+
+                    // Site-specific legacy directory: templates/<legacyDir>/<siteHandle>
+                    $legacyDir = Craft::getAlias('@templates') . DIRECTORY_SEPARATOR . $legacyDirName . DIRECTORY_SEPARATOR . $handle;
+                    if (is_dir($legacyDir)) {
+                        // Append as a catch-all root ('') so it’s checked after main templates
+                        if (!isset($event->roots[''])) {
+                            $event->roots[''] = [];
+                        }
+                        $event->roots[''][] = $legacyDir;
+                    }
+
+                    // Global legacy directory fallback: templates/<legacyDir>
+                    $globalLegacyDir = Craft::getAlias('@templates') . DIRECTORY_SEPARATOR . $legacyDirName;
+                    if (is_dir($globalLegacyDir)) {
+                        if (!isset($event->roots[''])) {
+                            $event->roots[''] = [];
+                        }
+                        // Avoid duplicate insertion if same as site-specific or already present
+                        if (!in_array($globalLegacyDir, $event->roots[''], true)) {
+                            $event->roots[''][] = $globalLegacyDir;
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    // Fail silently; fallback is optional
+                    Craft::debug('Legacy template roots registration skipped: ' . $e->getMessage(), __METHOD__);
+                }
+            }
+        );
     }
 
     /**

@@ -65,6 +65,15 @@ class Settings extends Model
      */
     public int $aggregateIntervalSeconds = 43200; // 12 hours default
 
+    /**
+     * @var bool Enable legacy template fallback
+     */
+    public bool $enableLegacyTemplates = false;
+
+    /**
+     * @var string Directory name for legacy template fallback
+     */
+    public string $legacyTemplatesDir = '_legacy';
 
     /**
      * @inheritdoc
@@ -83,6 +92,9 @@ class Settings extends Model
             ['autoFlushOnlyOnCpRequests', 'boolean'],
             ['autoFlushIntervalSeconds', 'integer', 'min' => 60],
             ['aggregateIntervalSeconds', 'integer', 'min' => 600],
+            ['enableLegacyTemplates', 'boolean'],
+            ['legacyTemplatesDir', 'string'],
+            ['legacyTemplatesDir', 'match', 'pattern' => '/^[a-zA-Z0-9_\-]+$/', 'message' => 'Legacy directory name can only contain letters, numbers, underscores, and hyphens.'],
         ];
     }
 }
