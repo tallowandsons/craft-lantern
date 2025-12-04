@@ -183,6 +183,19 @@ class DatabaseService extends Component
 
         // Apply defaults from plugin settings when not provided explicitly
         $settings = Lantern::getInstance()->getSettings();
+        if (!($settings->enableAggregation ?? true)) {
+            return [
+                'success' => true,
+                'message' => 'Aggregation disabled via Lantern settings.',
+                'monthsProcessed' => 0,
+                'templatesAggregated' => 0,
+                'totalHitsRolled' => 0,
+                'dailyRowsPruned' => 0,
+                'monthlyRowsPruned' => 0,
+                'dryRun' => $dryRun,
+                'skipped' => true,
+            ];
+        }
         if ($dailyRetentionDays === null) {
             $dailyRetentionDays = (int)($settings->dailyRetentionDays ?? 90);
         }

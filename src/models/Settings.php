@@ -71,6 +71,11 @@ class Settings extends Model
     public int $autoScanIntervalSeconds = 86400;
 
     /**
+     * @var bool Enable monthly aggregation and retention pruning
+     */
+    public bool $enableAggregation = true;
+
+    /**
      * @var int Minimum seconds between monthly aggregation runs (throttle)
      */
     public int $aggregateIntervalSeconds = 43200; // 12 hours default
@@ -103,6 +108,7 @@ class Settings extends Model
             ['autoFlushIntervalSeconds', 'integer', 'min' => 60],
             ['autoScanTemplatesEnabled', 'boolean'],
             ['autoScanIntervalSeconds', 'integer', 'min' => 600],
+            ['enableAggregation', 'boolean'],
             ['aggregateIntervalSeconds', 'integer', 'min' => 600],
             ['enableLegacyTemplates', 'boolean'],
             ['legacyTemplatesDir', 'string'],

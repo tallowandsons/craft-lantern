@@ -82,6 +82,11 @@ class AggregateController extends Controller
             return ExitCode::UNSPECIFIED_ERROR;
         }
 
+        if (!empty($result['message'])) {
+            $color = ($result['skipped'] ?? false) ? \yii\helpers\Console::FG_YELLOW : \yii\helpers\Console::FG_GREEN;
+            $this->stdout($result['message'] . "\n", $color);
+        }
+
         $this->stdout("Months processed: {$result['monthsProcessed']}\n");
         $this->stdout("Templates aggregated: {$result['templatesAggregated']}\n");
         $this->stdout("Total hits rolled up: {$result['totalHitsRolled']}\n");

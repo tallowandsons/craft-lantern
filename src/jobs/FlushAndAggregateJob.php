@@ -33,11 +33,13 @@ class FlushAndAggregateJob extends BaseJob
             // 2) Aggregate monthly with a time throttle from settings
             $cache = Craft::$app->getCache();
             $settings = Lantern::getInstance()->getSettings();
-            $minInterval = max(600, (int)($settings->aggregateIntervalSeconds ?? 43200));
-            $lastAgg = (int)($cache->get('lantern:aggregate:last') ?: 0);
-            if (!$lastAgg || (time() - $lastAgg) >= $minInterval) {
-                Lantern::getInstance()->databaseService->aggregateMonthly($this->options);
-                $cache->set('lantern:aggregate:last', time(), 86400);
+            if ($settings->enableAggregation ?? true) {
+                $minInterval = max(600, (int)($settings->aggregateIntervalSeconds ?? 43200));
+                $lastAgg = (int)($cache->get('lantern:aggregate:last') ?: 0);
+                if (!$lastAgg || (time() - $lastAgg) >= $minInterval) {
+                    Lantern::getInstance()->databaseService->aggregateMonthly($this->options);
+                    $cache->set('lantern:aggregate:last', time(), 86400);
+                }
             }
         } finally {
             $mutex->release('lantern:flush-aggregate');

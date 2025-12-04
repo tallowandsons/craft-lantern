@@ -161,45 +161,46 @@ When a template is not found in the standard locations, Lantern will look for it
 
 <h2>Aggregation &amp; Retention</h2>
 
+<p>Lantern can keep daily and monthly aggregated statistics to help with long-term analysis of template usage.<br>
+You can configure how long to keep daily and monthly data.
+</p>
+
 <div class="field">
-    <div class="heading"><label for="dailyRetentionDays">Keep daily data (days)</label></div>
+    {{ forms.lightswitchField({
+        id: 'enableAggregation',
+        name: 'enableAggregation',
+        on: settings.enableAggregation,
+        label: 'Enable aggregation &amp; retention',
+        instructions: 'When disabled, Lantern will skip monthly aggregation and any pruning tasks.',
+        warning: (config.enableAggregation is defined ? configWarning('enableAggregation') : null)
+    }) }}
+</div>
+
+<div class="field">
     {{ forms.textField({
         id: 'dailyRetentionDays',
         name: 'dailyRetentionDays',
+        label: 'Daily data retention (days)',
+        instructions: 'Number of days to keep daily aggregated data.',
         value: settings.dailyRetentionDays,
         size: 4,
         type: 'number',
         min: 0,
         warning: (config.dailyRetentionDays is defined ? configWarning('dailyRetentionDays') : null)
     }) }}
-    <p class="light">Keep recent daily rows for high-resolution charts (0 = disable daily pruning).</p>
-    <p class="light">Monthly aggregation always processes completed months only.</p>
-    <p class="light">Tip: 90 days is a good default.</p>
 
-    <div class="heading" style="margin-top: 1rem;"><label for="monthlyRetentionMonths">Keep monthly data (months)</label></div>
     {{ forms.textField({
         id: 'monthlyRetentionMonths',
         name: 'monthlyRetentionMonths',
+        label: 'Monthly data retention (months)',
+        instructions: 'Number of months to keep monthly aggregated data.',
         value: settings.monthlyRetentionMonths,
         size: 4,
         type: 'number',
         min: 0,
         warning: (config.monthlyRetentionMonths is defined ? configWarning('monthlyRetentionMonths') : null)
     }) }}
-    <p class="light">Keep long-term monthly rows for trend analysis (0 = keep all months).</p>
 
-    <div class="heading" style="margin-top: 1rem;"><label for="prune">Prune after aggregation</label></div>
-    {{ forms.lightswitchField({
-        id: 'prune',
-        name: 'prune',
-        on: settings.prune,
-        onLabel: 'Enabled',
-        offLabel: 'Disabled',
-        warning: (config.prune is defined ? configWarning('prune') : null)
-    }) }}
-</div>
-
-<div class="field">
     {{ forms.textField({
         id: 'aggregateIntervalSeconds',
         name: 'aggregateIntervalSeconds',
@@ -208,7 +209,7 @@ When a template is not found in the standard locations, Lantern will look for it
         type: 'number',
         min: 600,
         label: 'Aggregation interval (seconds)',
-        instructions: 'Minimum time between monthly aggregation runs. Default 12 hours (43200).',
+        instructions: 'Minimum time between monthly aggregation runs. Defaults to 12 hours (43200 seconds).',
         warning: (config.aggregateIntervalSeconds is defined ? configWarning('aggregateIntervalSeconds') : null)
     }) }}
 </div>
