@@ -15,24 +15,30 @@
     }) }}
 </div>
 
+<hr>
+
+<h2>Template Statuses</h2>
+
 <div class="field">
-    <div class="heading"><label for="staleDays">Stale after (days)</label></div>
     {{ forms.textField({
         id: 'staleDays',
         name: 'staleDays',
+        label: 'Stale after (days)',
         value: settings.staleDays,
         size: 4,
         type: 'number',
         min: 1,
+        instructions: 'Number of days after which a template is considered stale.',
         warning: (config.staleDays is defined ? configWarning('staleDays') : null)
     }) }}
 </div>
 
 <div class="field">
-    <div class="heading"><label for="newTemplateDays">New template window (days)</label></div>
     {{ forms.textField({
         id: 'newTemplateDays',
         name: 'newTemplateDays',
+        label: 'New template period (days)',
+        instructions: 'Number of days after which a newly discovered template is no longer considered "new".',
         value: settings.newTemplateDays ?? 90,
         size: 4,
         type: 'number',
@@ -43,7 +49,117 @@
 
 <hr>
 
-<h3>Aggregation &amp; Retention</h3>
+<h2>Auto‑Flush</h2>
+
+<p>Template logs are initially stored in the data cache and must be flushed to the database to be persisted.<br>
+This can be done manually via a cronjob or automatically during a web request.<br>
+</p>
+
+<div class="field">
+    {{ forms.lightswitchField({
+        id: 'autoFlushEnabled',
+        name: 'autoFlushEnabled',
+        on: settings.autoFlushEnabled,
+        label: 'Enable auto-flush to database',
+        instructions: 'Queues a background job to persist cache to database, without blocking web requests.',
+        warning: (config.autoFlushEnabled is defined ? configWarning('autoFlushEnabled') : null)
+    }) }}
+</div>
+
+<div class="field">
+    {{ forms.textField({
+        id: 'autoFlushIntervalSeconds',
+        name: 'autoFlushIntervalSeconds',
+        value: settings.autoFlushIntervalSeconds,
+        size: 6,
+        type: 'number',
+        min: 60,
+        label: 'Scan interval (seconds)',
+        instructions: 'Minimum time between auto-flushes. Defaults to 5 minutes (300 seconds).',
+        warning: (config.autoFlushIntervalSeconds is defined ? configWarning('autoFlushIntervalSeconds') : null)
+    }) }}
+</div>
+
+
+<div class="field">
+    {{ forms.lightswitchField({
+        id: 'autoFlushOnlyOnCpRequests',
+        name: 'autoFlushOnlyOnCpRequests',
+        on: settings.autoFlushOnlyOnCpRequests,
+        label: 'Only queue from Control Panel requests',
+        instructions: 'If enabled, frontend requests will not queue a flush.',
+        warning: (config.autoFlushOnlyOnCpRequests is defined ? configWarning('autoFlushOnlyOnCpRequests') : null)
+    }) }}
+</div>
+
+<hr>
+
+<h2>Auto Template Scans</h2>
+
+<p>Lanterns needs to periodically scan the templates directory so that it has an up-to-date record of templates.<br>
+This can be done manually via a cronjob or automatically during a web request.
+</p>
+
+<div class="field">
+    {{ forms.lightswitchField({
+        id: 'autoScanTemplatesEnabled',
+        name: 'autoScanTemplatesEnabled',
+        on: settings.autoScanTemplatesEnabled,
+        label: 'Enable automatic template scans',
+        instructions: 'Scan the templates directory in the background.',
+        warning: (config.autoScanTemplatesEnabled is defined ? configWarning('autoScanTemplatesEnabled') : null)
+    }) }}
+</div>
+
+<div class="field">
+    {{ forms.textField({
+        id: 'autoScanIntervalSeconds',
+        name: 'autoScanIntervalSeconds',
+        value: settings.autoScanIntervalSeconds,
+        size: 6,
+        type: 'number',
+        min: 600,
+        label: 'Scan interval (seconds)',
+        instructions: 'Minimum time between automatic scans. Defaults to once per day (86400 seconds).',
+        warning: (config.autoScanIntervalSeconds is defined ? configWarning('autoScanIntervalSeconds') : null)
+    }) }}
+</div>
+
+<hr>
+
+<h2>Legacy Template Fallback</h2>
+
+<p>To help you tidy up unused templates, you can enable a legacy directory.<br>
+This allows you to move legacy templates into a separate folder without deleting them.<br>
+When a template is not found in the standard locations, Lantern will look for it in the specified legacy directory.<br>
+</p>
+
+<div class="field">
+    {{ forms.lightswitchField({
+        id: 'enableLegacyTemplates',
+        name: 'enableLegacyTemplates',
+        on: settings.enableLegacyTemplates,
+        label: 'Enable Legacy Template Fallback',
+        instructions: 'When enabled, templates will fallback to a legacy directory if not found in the standard locations.',
+        warning: (config.enableLegacyTemplates is defined ? configWarning('enableLegacyTemplates') : null)
+    }) }}
+</div>
+
+<div class="field">
+    {{ forms.textField({
+        id: 'legacyTemplatesDir',
+        name: 'legacyTemplatesDir',
+        value: settings.legacyTemplatesDir,
+        label: 'Legacy Templates Directory Name',
+        instructions: 'Name for legacy template directory. Templates will be resolved from `@templates/<legacy-directory>/...`',
+        placeholder: '_legacy',
+        warning: (config.legacyTemplatesDir is defined ? configWarning('legacyTemplatesDir') : null)
+    }) }}
+</div>
+
+<hr>
+
+<h2>Aggregation &amp; Retention</h2>
 
 <div class="field">
     <div class="heading"><label for="dailyRetentionDays">Keep daily data (days)</label></div>
@@ -80,101 +196,6 @@
         onLabel: 'Enabled',
         offLabel: 'Disabled',
         warning: (config.prune is defined ? configWarning('prune') : null)
-    }) }}
-</div>
-
-<hr>
-
-<h3>Legacy Template Fallback</h3>
-
-<div class="field">
-    {{ forms.lightswitchField({
-        id: 'enableLegacyTemplates',
-        name: 'enableLegacyTemplates',
-        on: settings.enableLegacyTemplates,
-        label: 'Enable Legacy Template Fallback',
-        instructions: 'When enabled, templates will fallback to a legacy directory if not found in the standard locations.',
-        warning: (config.enableLegacyTemplates is defined ? configWarning('enableLegacyTemplates') : null)
-    }) }}
-</div>
-
-<div class="field">
-    {{ forms.textField({
-        id: 'legacyTemplatesDir',
-        name: 'legacyTemplatesDir',
-        value: settings.legacyTemplatesDir,
-        label: 'Legacy Templates Directory Name',
-        instructions: 'Directory name for legacy template fallback (e.g., "_legacy"). Templates will be resolved from `templates/<legacy-directory>/...`',
-        placeholder: '_legacy',
-        warning: (config.legacyTemplatesDir is defined ? configWarning('legacyTemplatesDir') : null)
-    }) }}
-</div>
-
-<hr>
-
-<h3>Auto‑Flush (background)</h3>
-
-<div class="field">
-    {{ forms.lightswitchField({
-        id: 'autoFlushEnabled',
-        name: 'autoFlushEnabled',
-        on: settings.autoFlushEnabled,
-        label: 'Enable auto-flush to database',
-        instructions: 'Queues a background job to persist cache to DB, without blocking web requests.',
-        warning: (config.autoFlushEnabled is defined ? configWarning('autoFlushEnabled') : null)
-    }) }}
-</div>
-
-<div class="field">
-    {{ forms.textField({
-        id: 'autoFlushIntervalSeconds',
-        name: 'autoFlushIntervalSeconds',
-        value: settings.autoFlushIntervalSeconds,
-        size: 6,
-        type: 'number',
-        min: 60,
-        label: 'Minimum interval (seconds)',
-        instructions: 'Debounce time between background flushes (minimum 60s).',
-        warning: (config.autoFlushIntervalSeconds is defined ? configWarning('autoFlushIntervalSeconds') : null)
-    }) }}
-</div>
-
-
-<div class="field">
-    {{ forms.lightswitchField({
-        id: 'autoFlushOnlyOnCpRequests',
-        name: 'autoFlushOnlyOnCpRequests',
-        on: settings.autoFlushOnlyOnCpRequests,
-        label: 'Only queue from Control Panel requests',
-        instructions: 'If enabled, frontend requests will not queue a flush.',
-        warning: (config.autoFlushOnlyOnCpRequests is defined ? configWarning('autoFlushOnlyOnCpRequests') : null)
-    }) }}
-</div>
-
-<h3>Auto Template Scans</h3>
-
-<div class="field">
-    {{ forms.lightswitchField({
-        id: 'autoScanTemplatesEnabled',
-        name: 'autoScanTemplatesEnabled',
-        on: settings.autoScanTemplatesEnabled,
-        label: 'Enable automatic template scans',
-        instructions: 'Scan the templates directory in the background to discover new templates without needing a cron.',
-        warning: (config.autoScanTemplatesEnabled is defined ? configWarning('autoScanTemplatesEnabled') : null)
-    }) }}
-</div>
-
-<div class="field">
-    {{ forms.textField({
-        id: 'autoScanIntervalSeconds',
-        name: 'autoScanIntervalSeconds',
-        value: settings.autoScanIntervalSeconds,
-        size: 6,
-        type: 'number',
-        min: 600,
-        label: 'Scan interval (seconds)',
-        instructions: 'Minimum time between automatic scans. Defaults to once per day (86400 seconds).',
-        warning: (config.autoScanIntervalSeconds is defined ? configWarning('autoScanIntervalSeconds') : null)
     }) }}
 </div>
 
