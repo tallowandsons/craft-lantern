@@ -33,7 +33,7 @@
     {{ forms.textField({
         id: 'newTemplateDays',
         name: 'newTemplateDays',
-        value: settings.newTemplateDays,
+        value: settings.newTemplateDays ?? 90,
         size: 4,
         type: 'number',
         min: 1,
@@ -148,6 +148,33 @@
         label: 'Only queue from Control Panel requests',
         instructions: 'If enabled, frontend requests will not queue a flush.',
         warning: (config.autoFlushOnlyOnCpRequests is defined ? configWarning('autoFlushOnlyOnCpRequests') : null)
+    }) }}
+</div>
+
+<h3>Auto Template Scans</h3>
+
+<div class="field">
+    {{ forms.lightswitchField({
+        id: 'autoScanTemplatesEnabled',
+        name: 'autoScanTemplatesEnabled',
+        on: settings.autoScanTemplatesEnabled,
+        label: 'Enable automatic template scans',
+        instructions: 'Scan the templates directory in the background to discover new templates without needing a cron.',
+        warning: (config.autoScanTemplatesEnabled is defined ? configWarning('autoScanTemplatesEnabled') : null)
+    }) }}
+</div>
+
+<div class="field">
+    {{ forms.textField({
+        id: 'autoScanIntervalSeconds',
+        name: 'autoScanIntervalSeconds',
+        value: settings.autoScanIntervalSeconds,
+        size: 6,
+        type: 'number',
+        min: 600,
+        label: 'Scan interval (seconds)',
+        instructions: 'Minimum time between automatic scans. Defaults to once per day (86400 seconds).',
+        warning: (config.autoScanIntervalSeconds is defined ? configWarning('autoScanIntervalSeconds') : null)
     }) }}
 </div>
 

@@ -61,6 +61,16 @@ class Settings extends Model
     public bool $autoFlushOnlyOnCpRequests = false;
 
     /**
+     * @var bool Enable periodic template scans to discover new templates
+     */
+    public bool $autoScanTemplatesEnabled = true;
+
+    /**
+     * @var int Minimum seconds between template directory scans
+     */
+    public int $autoScanIntervalSeconds = 86400;
+
+    /**
      * @var int Minimum seconds between monthly aggregation runs (throttle)
      */
     public int $aggregateIntervalSeconds = 43200; // 12 hours default
@@ -91,10 +101,12 @@ class Settings extends Model
             ['autoFlushEnabled', 'boolean'],
             ['autoFlushOnlyOnCpRequests', 'boolean'],
             ['autoFlushIntervalSeconds', 'integer', 'min' => 60],
+            ['autoScanTemplatesEnabled', 'boolean'],
+            ['autoScanIntervalSeconds', 'integer', 'min' => 600],
             ['aggregateIntervalSeconds', 'integer', 'min' => 600],
             ['enableLegacyTemplates', 'boolean'],
             ['legacyTemplatesDir', 'string'],
-            ['legacyTemplatesDir', 'match', 'pattern' => '/^[a-zA-Z0-9_\-]+$/', 'message' => 'Legacy directory name can only contain letters, numbers, underscores, and hyphens.'],
+            ['legacyTemplatesDir', 'match', 'pattern' => '/^[a-zA-Z0-9_\\-]+$/', 'message' => 'Legacy directory name can only contain letters, numbers, underscores, and hyphens.'],
         ];
     }
 }

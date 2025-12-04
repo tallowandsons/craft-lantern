@@ -98,6 +98,9 @@ class InventoryService extends Component
                     "Template inventory scan completed: {$templatesFound} found, {$templatesAdded} added, {$templatesUpdated} updated, {$templatesRemoved} removed"
                 );
 
+                // Record scan time so debouncing works even when triggered manually/cron
+                Lantern::getInstance()->cacheService->recordTemplateScan();
+
                 return [
                     'success' => true,
                     'message' => "Template inventory scan completed successfully",

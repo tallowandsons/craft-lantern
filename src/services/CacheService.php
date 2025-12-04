@@ -5,6 +5,7 @@ namespace tallowandsons\lantern\services;
 use Craft;
 use tallowandsons\lantern\Lantern;
 use tallowandsons\lantern\jobs\FlushAndAggregateJob;
+use tallowandsons\lantern\jobs\TemplateScanJob;
 use yii\base\Component;
 
 /**
@@ -24,6 +25,10 @@ class CacheService extends Component
     /** Soft debounce flags for auto-flush queueing */
     private const CACHE_KEY_FLUSH_QUEUED = 'lantern:flush:queued';
     private const CACHE_KEY_LAST_FLUSH_AT = 'lantern:flush:last';
+
+    /** Soft debounce flags for auto-scan queueing */
+    private const CACHE_KEY_SCAN_QUEUED = 'lantern:scan:queued';
+    private const CACHE_KEY_LAST_SCAN_AT = 'lantern:scan:last';
 
     /**
      * @var int Cache duration (24 hours)
@@ -97,6 +102,7 @@ class CacheService extends Component
 
         // Enqueue background flush if needed (cheap, non-blocking)
         $this->maybeQueueFlush();
+        $this->maybeScanTemplates();
 
         // Log the increment for debugging (only in debug mode)
         Lantern::getInstance()->log->logTemplateIncrement($templateName);
@@ -147,6 +153,55 @@ class CacheService extends Component
         ]));
 
         $queuedThisRequest = true;
+    }
+
+    /**
+     * Decide if we should queue a background template directory scan.
+     * Ensures new templates are discovered without relying on cron.
+     */
+    private function maybeScanTemplates(): void
+    {
+        static $queuedThisRequest = false;
+        if ($queuedThisRequest) {
+            return;
+        }
+
+        $settings = Lantern::getInstance()->getSettings();
+        if (!($settings->autoScanTemplatesEnabled ?? true)) {
+            return;
+        }
+
+        $cache = Craft::$app->getCache();
+        $interval = max(600, (int)($settings->autoScanIntervalSeconds ?? 86400));
+
+        // Already queued recently?
+        if ($cache->get(self::CACHE_KEY_SCAN_QUEUED)) {
+            return;
+        }
+
+        // Respect interval between scans
+        $last = (int)($cache->get(self::CACHE_KEY_LAST_SCAN_AT) ?: 0);
+        if ($last && (time() - $last) < $interval) {
+            return;
+        }
+
+        $this->recordTemplateScan($interval);
+        Craft::$app->getQueue()->push(new TemplateScanJob());
+        $queuedThisRequest = true;
+    }
+
+    /**
+     * Mark that a template scan was queued or completed.
+     * Updates debounce flags so manual/cron runs are respected.
+     */
+    public function recordTemplateScan(?int $intervalSeconds = null): void
+    {
+        $cache = Craft::$app->getCache();
+        $settings = Lantern::getInstance()->getSettings();
+        $interval = max(600, (int)($intervalSeconds ?? $settings->autoScanIntervalSeconds ?? 86400));
+
+        $cache->set(self::CACHE_KEY_SCAN_QUEUED, 1, $interval);
+        $cache->set(self::CACHE_KEY_LAST_SCAN_AT, time(), max($interval, 86400));
     }
 
     /**
