@@ -82,6 +82,11 @@ class CacheService extends Component
      */
     public function incrementTemplate(string $templateName): void
     {
+        $templateName = $this->normalizeTemplateName($templateName);
+        if ($templateName === '') {
+            return;
+        }
+
         // Load cache data first
         $this->loadCacheData();
 
@@ -106,6 +111,34 @@ class CacheService extends Component
 
         // Log the increment for debugging (only in debug mode)
         Lantern::getInstance()->log->logTemplateIncrement($templateName);
+    }
+
+    /**
+     * Normalize template identifiers before persisting them to cache
+     */
+    private function normalizeTemplateName(string $templateName): string
+    {
+        $normalized = trim($templateName);
+
+        if ($normalized === '') {
+            return '';
+        }
+
+        $normalized = str_replace('\\', '/', $normalized);
+
+        $collapsedSlashes = preg_replace('#/+#', '/', $normalized);
+        if (is_string($collapsedSlashes)) {
+            $normalized = $collapsedSlashes;
+        }
+
+        $normalized = ltrim($normalized, '/');
+
+        $strippedExtension = preg_replace('/\.(twig|html)$/i', '', $normalized);
+        if (is_string($strippedExtension)) {
+            $normalized = $strippedExtension;
+        }
+
+        return $normalized;
     }
 
     /**
@@ -235,6 +268,11 @@ class CacheService extends Component
      */
     public function getTemplateHitCount(string $templateName): int
     {
+        $templateName = $this->normalizeTemplateName($templateName);
+        if ($templateName === '') {
+            return 0;
+        }
+
         $this->loadCacheData();
         return $this->templateData[$templateName]['hits'] ?? 0;
     }
@@ -244,6 +282,11 @@ class CacheService extends Component
      */
     public function getTemplateLastHit(string $templateName): ?int
     {
+        $templateName = $this->normalizeTemplateName($templateName);
+        if ($templateName === '') {
+            return null;
+        }
+
         $this->loadCacheData();
         return $this->templateData[$templateName]['lastHit'] ?? null;
     }
