@@ -1,60 +1,55 @@
 {% set s = summary %}
 <div class="lantern-usage">
-  <div class="lantern-summary">
-    <div class="lantern-pane"><strong>Total</strong><div>{{ s.total|number_format }}</div></div>
-    <div class="lantern-pane"><strong>Never Used</strong><div>{{ s.never|number_format }}</div></div>
-    <div class="lantern-pane"><strong>Stale (>{{ staleDays }}d)</strong><div>{{ s.stale|number_format }}</div></div>
-    <div class="lantern-pane"><strong>Active</strong><div>{{ s.active|number_format }}</div></div>
-  </div>
-
-  {% if trackingSince %}
-    <p class="light">Note: “Never Used” means “Never used since tracking started on {{ trackingSince|date }}".{% if newTemplateDays > 0 %} New templates are those first seen within the last {{ newTemplateDays }} days.{% endif %}</p>
-  {% endif %}
-
-  <hr>
 
   <form method="get" class="lantern-filters">
-    <label>Status</label>
-    <div class="select">
-      <select name="status" onchange="this.form.submit()">
-        {% set statuses = {
-          'all':'All',
-          'never':'Never Used',
-          (newTemplateDays > 0 ? 'new' : null) : (newTemplateDays > 0 ? 'New' : null),
-          'stale':'Stale',
-          'active':'Active'
-        }|filter %}
-        {% for key,label in statuses %}
-          <option value="{{ key }}" {{ filters.status == key ? 'selected' }}>{{ label }}</option>
-        {% endfor %}
-      </select>
+    <div class="lantern-filter">
+      <label>Status</label>
+      <div class="select">
+        <select name="status">
+          {% set statuses = {
+            'all':'All',
+            'never':'Never Used',
+            (newTemplateDays > 0 ? 'new' : null) : (newTemplateDays > 0 ? 'New' : null),
+            'stale':'Stale',
+            'active':'Active'
+          }|filter %}
+          {% for key,label in statuses %}
+            <option value="{{ key }}" {{ filters.status == key ? 'selected' }}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
     </div>
 
-    <label>Sort</label>
-    <div class="select">
-      <select name="sort" onchange="this.form.submit()">
-        {% set sorts = {
-          'template':'Template',
-          'totalHits':'Total Hits',
-          'lastUsed':'Last Used',
-          'status':'Status'
-        } %}
-        {% for key,label in sorts %}
-          <option value="{{ key }}" {{ filters.sort == key ? 'selected' }}>{{ label }}</option>
-        {% endfor %}
-      </select>
+    <div class="lantern-filter">
+      <label>Sort</label>
+      <div class="select">
+        <select name="sort">
+          {% set sorts = {
+            'template':'Template Name',
+            'totalHits':'Total Hits',
+            'lastUsed':'Last Used',
+            'status':'Status'
+          } %}
+          {% for key,label in sorts %}
+            <option value="{{ key }}" {{ filters.sort == key ? 'selected' }}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
     </div>
 
-    <div class="select">
-      <select name="dir" onchange="this.form.submit()">
-        <option value="asc" {{ filters.dir == 'asc' ? 'selected' }}>Asc</option>
-        <option value="desc" {{ filters.dir == 'desc' ? 'selected' }}>Desc</option>
-      </select>
+    <div class="lantern-filter">
+      <label>Direction</label>
+      <div class="select">
+        <select name="dir">
+          <option value="asc" {{ filters.dir == 'asc' ? 'selected' }}>Asc</option>
+          <option value="desc" {{ filters.dir == 'desc' ? 'selected' }}>Desc</option>
+        </select>
+      </div>
     </div>
 
-    <noscript>
-      <button class="btn" type="submit">Apply</button>
-    </noscript>
+    <div class="lantern-filter lantern-filter__actions">
+      <button class="btn submit" type="submit">Filter</button>
+    </div>
   </form>
 
   <table class="data fullwidth lantern-table">
