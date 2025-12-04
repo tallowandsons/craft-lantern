@@ -1,30 +1,32 @@
-# Lantern
+![Banner](./docs/img/banner.png)
 
-Shine a light on your Craft CMS template usage
+# Lantern for Craft CMS
 
-## Requirements
+Lantern tracks how many times each of your templates is used and displays the data in a useful utility. This can help you make informed decisions about when to legacy templates to keep your codebase clean.
 
-This plugin requires Craft CMS 5.7.0 or later, and PHP 8.2 or later.
+Lantern also provides an optional legacy templates folder, where you can move templates to if you're not quite ready to delete them.
 
-## Installation
+## 🔧 Quick Start
 
-You can install this plugin from the Plugin Store or with Composer.
+### 1. Install Lantern
 
-#### From the Plugin Store
-
-Go to the Plugin Store in your project’s Control Panel and search for “Lantern”. Then press “Install”.
-
-#### With Composer
-
-Open your terminal and run the following commands:
+You can install Lantern by searching for "Lantern" in the Craft Plugin Store, or install manually using composer.
 
 ```bash
-# go to the project directory
-cd /path/to/my-project.test
-
-# tell Composer to load the plugin
 composer require tallowandsons/craft-lantern
-
-# tell Craft to install the plugin
-./craft plugin/install lantern
 ```
+## Requirements
+This plugin supports
+- Craft CMS 5.0.0 or later
+
+## Optional Configuration and commands
+
+### Automatic flushing and scanning
+
+For performance, Lantern initially stores template logging data in the cache. This needs to be periodically flushed to the database. By default Lantern will do this automatically during a web request. If you'd rather set this via a cronjob, you can do this using the `php craft lantern/cache/flush` command.
+
+Lantern occasionally needs to scan the @templates directory to keep its inventory up to date. By default a scan will run once per day during a web request. If you'd rather, you can also run this via the `php craft lantern/inventory/scan` command.
+
+## Credits
+
+Made with care and attention by [Tallow &amp; Sons](https://github.com/tallowandsons)
