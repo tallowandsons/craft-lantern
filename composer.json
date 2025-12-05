@@ -1,47 +1,47 @@
 {
-  "name": "tallowandsons/craft-lantern",
-  "description": "Shine a light on your Craft CMS template usage",
-  "type": "craft-plugin",
-  "license": "proprietary",
-  "support": {
-    "issues": "https://github.com/tallowandsons/craft-lantern/issues?state=open",
-    "source": "https://github.com/tallowandsons/craft-lantern",
-    "docs": "https://github.com/tallowandsons/craft-lantern",
-    "rss": "https://github.com/tallowandsons/craft-lantern/releases.atom"
-  },
-  "require": {
-    "php": ">=8.2",
-    "craftcms/cms": "^5.7.0"
-  },
-  "require-dev": {
-    "craftcms/ecs": "dev-main",
-    "craftcms/phpstan": "dev-main"
-  },
-  "autoload": {
-    "psr-4": {
-      "tallowandsons\\lantern\\": "src/"
-    }
-  },
-  "extra": {
-    "handle": "lantern",
-    "name": "Lantern",
-    "developer": "Tallow & Sons",
-    "documentationUrl": "https://github.com/tallowandsons/craft-lantern",
-    "class": "tallowandsons\\lantern\\Lantern"
-  },
-  "scripts": {
-    "check-cs": "ecs check --ansi",
-    "fix-cs": "ecs check --ansi --fix",
-    "phpstan": "phpstan --memory-limit=1G"
-  },
-  "config": {
-    "sort-packages": true,
-    "platform": {
-      "php": "8.2"
+    "name": "tallowandsons/craft-lantern",
+    "description": "Shine a light on your Craft CMS template usage",
+    "type": "craft-plugin",
+    "license": "proprietary",
+    "support": {
+        "issues": "https://github.com/tallowandsons/craft-lantern/issues?state=open",
+        "source": "https://github.com/tallowandsons/craft-lantern",
+        "docs": "https://github.com/tallowandsons/craft-lantern",
+        "rss": "https://github.com/tallowandsons/craft-lantern/releases.atom"
     },
-    "allow-plugins": {
-      "yiisoft/yii2-composer": true,
-      "craftcms/plugin-installer": true
+    "require": {
+        "php": ">=8.2",
+        "craftcms/cms": "^5.0.0"
+    },
+    "require-dev": {
+        "craftcms/ecs": "dev-main",
+        "craftcms/phpstan": "dev-main"
+    },
+    "autoload": {
+        "psr-4": {
+            "tallowandsons\\lantern\\": "src/"
+        }
+    },
+    "extra": {
+        "handle": "lantern",
+        "name": "Lantern",
+        "developer": "Tallow & Sons",
+        "documentationUrl": "https://github.com/tallowandsons/craft-lantern",
+        "class": "tallowandsons\\lantern\\Lantern"
+    },
+    "scripts": {
+        "check-cs": "ecs check --ansi",
+        "fix-cs": "ecs check --ansi --fix",
+        "phpstan": "phpstan --memory-limit=1G"
+    },
+    "config": {
+        "sort-packages": true,
+        "platform": {
+            "php": "8.2"
+        },
+        "allow-plugins": {
+            "yiisoft/yii2-composer": true,
+            "craftcms/plugin-installer": true
+        }
     }
-  }
 }
