@@ -23,7 +23,7 @@ This plugin supports
 
 ### Automatic flushing and scanning
 
-For performance, Lantern initially stores template logging data in the cache. This needs to be periodically flushed to the database. By default Lantern will do this automatically during a web request. If you'd rather set this via a cronjob, you can do this using the `php craft lantern/cache/flush` command.
+For performance, Lantern initially stores template logging data in the cache. This needs to be periodically flushed to the database. By default Lantern will do this automatically during a web request at most every 5 minutes. If you'd rather set this via a cronjob, you can do this using the `php craft lantern/cache/flush` command.
 
 Lantern occasionally needs to scan the @templates directory to keep its inventory up to date. By default a scan will run once per day during a web request. If you'd rather, you can also run this via the `php craft lantern/inventory/scan` command.
 
