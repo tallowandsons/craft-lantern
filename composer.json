@@ -1,8 +1,24 @@
 {
     "name": "tallowandsons/craft-lantern",
-    "description": "Shine a light on your Craft CMS template usage",
+    "description": "Template usage tracker for Craft CMS",
+    "keywords": [
+        "craft",
+        "cms",
+        "craftcms",
+        "craft-plugin",
+        "lantern",
+        "template-usage",
+        "tallowandsons"
+    ],
     "type": "craft-plugin",
-    "license": "proprietary",
+    "license": "MIT",
+    "homepage": "https://github.com/tallowandsons/craft-lantern",
+    "authors": [
+        {
+            "name": "Tallow & Sons",
+            "homepage": "https://github.com/tallowandsons"
+        }
+    ],
     "support": {
         "issues": "https://github.com/tallowandsons/craft-lantern/issues?state=open",
         "source": "https://github.com/tallowandsons/craft-lantern",
@@ -26,6 +42,7 @@
         "handle": "lantern",
         "name": "Lantern",
         "developer": "Tallow & Sons",
+        "developerUrl": "https://github.com/tallowandsons",
         "documentationUrl": "https://github.com/tallowandsons/craft-lantern",
         "class": "tallowandsons\\lantern\\Lantern"
     },
