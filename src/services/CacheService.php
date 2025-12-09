@@ -47,6 +47,11 @@ class CacheService extends Component
     private bool $cacheLoaded = false;
 
     /**
+     * @var array<string,string> Cache of canonical template paths keyed by Twig identifiers
+     */
+    private array $templatePathCache = [];
+
+    /**
      * Load cache data from Craft's cache
      */
     private function loadCacheData(): void
@@ -58,7 +63,7 @@ class CacheService extends Component
         // Load cumulative template data from cache
         $cachedData = Craft::$app->getCache()->get(self::CACHE_KEY_HITS);
         if ($cachedData !== false) {
-            $this->templateData = $cachedData;
+            $this->templateData = $this->canonicalizeCachedTemplates($cachedData);
         }
 
         $this->cacheLoaded = true;
@@ -75,6 +80,42 @@ class CacheService extends Component
             $this->templateData,
             self::CACHE_DURATION
         );
+    }
+
+    /**
+     * Ensure cached template keys reflect canonical names so historical data lines up with inventory entries.
+     *
+     * @param array<string,array{hits:int,lastHit:int|null}> $cachedData
+     * @return array<string,array{hits:int,lastHit:int|null}>
+     */
+    private function canonicalizeCachedTemplates(array $cachedData): array
+    {
+        $normalizedData = [];
+
+        foreach ($cachedData as $template => $data) {
+            if (!is_array($data) || !array_key_exists('hits', $data)) {
+                continue;
+            }
+
+            $canonical = $this->normalizeTemplateName((string)$template);
+
+            if (!isset($normalizedData[$canonical])) {
+                $normalizedData[$canonical] = $data;
+                continue;
+            }
+
+            $existingHits = $normalizedData[$canonical]['hits'] ?? 0;
+            $incomingHits = $data['hits'] ?? 0;
+            $normalizedData[$canonical]['hits'] = $existingHits + $incomingHits;
+
+            $existingLastHit = $normalizedData[$canonical]['lastHit'] ?? null;
+            $incomingLastHit = $data['lastHit'] ?? null;
+            if ($incomingLastHit !== null && ($existingLastHit === null || $incomingLastHit > $existingLastHit)) {
+                $normalizedData[$canonical]['lastHit'] = $incomingLastHit;
+            }
+        }
+
+        return $normalizedData;
     }
 
     /**
@@ -138,7 +179,46 @@ class CacheService extends Component
             $normalized = $strippedExtension;
         }
 
-        return $normalized;
+        if (isset($this->templatePathCache[$normalized])) {
+            return $this->templatePathCache[$normalized];
+        }
+
+        return $this->templatePathCache[$normalized] = $this->canonicalizeTemplateName($normalized);
+    }
+
+    /**
+     * Resolve template to its inventory-style path (e.g. include site handle prefix when applicable).
+     */
+    private function canonicalizeTemplateName(string $templateName): string
+    {
+        $canonical = $templateName;
+
+        try {
+            $resolvedPath = Craft::$app->getView()->resolveTemplate($templateName);
+            $templatesRoot = Craft::getAlias('@templates');
+
+            if (is_string($resolvedPath) && is_string($templatesRoot)) {
+                $normalizedRoot = rtrim(str_replace('\\', '/', $templatesRoot), '/') . '/';
+                $normalizedPath = str_replace('\\', '/', $resolvedPath);
+
+                if (str_starts_with($normalizedPath, $normalizedRoot)) {
+                    $relative = substr($normalizedPath, strlen($normalizedRoot));
+                    $relative = ltrim($relative, '/');
+                    $relative = preg_replace('/\.(twig|html)$/i', '', $relative);
+
+                    if (is_string($relative) && $relative !== '') {
+                        $canonical = $relative;
+                    }
+                }
+            }
+        } catch (\Throwable $exception) {
+            Lantern::getInstance()->log->debug(
+                "Template canonicalization failed for '{$templateName}': {$exception->getMessage()}",
+                'cache'
+            );
+        }
+
+        return $canonical;
     }
 
     /**
